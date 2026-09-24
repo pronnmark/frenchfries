@@ -19,6 +19,9 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* several toggled elements set display:flex/grid, which would otherwise beat
+   the UA [hidden] rule and leave stale cards on screen */
+[hidden] { display: none !important; }
 
 html, body {
   margin: 0; height: 100%;
@@ -52,6 +55,8 @@ button { font: inherit; color: inherit; }
   padding: max(10px, env(safe-area-inset-top)) 12px 10px;
   border-bottom: 1px solid var(--line);
   background: rgba(11,13,18,.92); backdrop-filter: blur(12px);
+  /* must sit above the drill's full-screen tap layer, or back/mute die */
+  position: relative; z-index: 6;
 }
 .brand { font-weight: 700; font-size: 17px; flex: 1; text-align: center; letter-spacing: -.2px; }
 .brand .fry { margin-right: 4px; }
@@ -226,10 +231,17 @@ button { font: inherit; color: inherit; }
 .flash-gear { display: inline-block; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--g); border: 1px solid color-mix(in srgb, var(--g) 40%, transparent);
   background: color-mix(in srgb, var(--g) 12%, transparent); border-radius: 999px; padding: 4px 12px; }
-.flash-inf { font-size: 34px; font-weight: 800; margin: 16px 0 2px; letter-spacing: -1px; }
-.flash-person { font-size: 19px; color: var(--dim); }
-.flash-answer { margin-top: 24px; animation: pop .2s ease; }
-.fa-fr { font-size: 30px; font-weight: 750; font-style: italic; letter-spacing: -.5px; }
+.flash-context { color: var(--dim); font-size: 15px; margin-top: 18px; }
+.flash-prompt {
+  font-size: 32px; font-weight: 780; letter-spacing: -.9px;
+  margin: 6px 0 10px; line-height: 1.15; text-wrap: balance;
+}
+.flash-ask { color: var(--dimmer); font-size: 12px; text-transform: uppercase; letter-spacing: .12em; }
+.flash-answer {
+  margin-top: 22px; padding-top: 20px; animation: pop .2s ease;
+  border-top: 1px dashed var(--line);
+}
+.fa-fr { font-size: 32px; font-weight: 750; font-style: italic; letter-spacing: -.5px; color: var(--accent); }
 .fa-en { color: var(--dim); margin-top: 4px; }
 .fa-phrase { margin-top: 16px; padding: 10px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; font-size: 15px; }
 .flash-hint { margin-top: 26px; color: var(--dimmer); font-size: 13px; animation: blink 2s infinite; }

@@ -685,6 +685,32 @@ function glossFor(verb, gearId, i) {
   return '';
 }
 
+/* --- English prompt builder -------------------------------------
+   The short, unambiguous English conjugation shown on the FRONT of a
+   flashcard. It has to separate gear 2 from gear 3 on its own:
+     passe      -> "I had"          (one finished event)
+     imparfait  -> "I used to have" (background / habit)
+------------------------------------------------------------------ */
+function promptFor(verb, gearId, i) {
+  const p = PRONOUNS_EN[i];
+  const past = Array.isArray(verb.enPast) ? verb.enPast[i] : verb.enPast;
+  switch (gearId) {
+    case 'present':
+      return `${p} ${verb.enPresent[i]}`;
+    case 'passe':
+      return `${p} ${past}`;
+    case 'imparfait':
+      return `${p} used to ${verb.enInf}`;
+    case 'futur':
+      return `${p} will ${verb.enInf}`;
+    case 'conditionnel':
+      return `${p} would ${verb.enInf}`;
+    case 'subjonctif':
+      return `(that) ${p} ${verb.enInf}`;
+  }
+  return '';
+}
+
 /* --- Card generation -------------------------------------------- */
 // Chat cards: one per verb x gear. Flashcards: one per verb x gear x person.
 function chatCardId(verbId, gearId) { return `c:${verbId}:${gearId}`; }
@@ -715,7 +741,8 @@ function buildFormCard(verb, gearId, i) {
     verbId: verb.id,
     gearId: gearId,
     person: i,
-    answer: g.forms[i],
+    answer: g.forms[i],                   // the French form — this is the answer
+    prompt: promptFor(verb, gearId, i),   // the English conjugation — this is the question
     gloss: glossFor(verb, gearId, i)
   };
 }
@@ -742,7 +769,7 @@ function cardByIdImpl(id) {
 /* Everything the app layer consumes, in one namespace. */
 const DATA = {
   GEARS, GEAR_BY_ID, VERBS, VERB_BY_ID, PRONOUNS_EN,
-  glossFor, chatCardId, formCardId,
+  glossFor, promptFor, chatCardId, formCardId,
   allCardsForVerb, cardById: cardByIdImpl
 };
 window.DATA = DATA;

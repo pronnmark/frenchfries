@@ -4,7 +4,7 @@
 ------------------------------------------------------------------ */
 (() => {
   const D = window.DATA;
-  const { GEARS, GEAR_BY_ID, VERBS, VERB_BY_ID, PRONOUNS_EN } = D;
+  const { GEARS, GEAR_BY_ID, VERBS, VERB_BY_ID } = D;
   const GRADE = FSRS.GRADE;
 
   const $ = id => document.getElementById(id);
@@ -423,11 +423,13 @@
       $('flash').hidden = false;
       $('flash').style.setProperty('--g', g.color);
       $('flash-gear').textContent = `${g.icon} ${g.nick} · ${g.fr}`;
-      $('flash-inf').textContent = v.inf;
-      $('flash-person').textContent = `${PRONOUNS_EN[card.person]} — ${v.en}`;
+      $('flash-context').textContent = `${v.inf} · ${v.en}`;
+      $('flash-prompt').textContent = `“${card.prompt}”`;
       $('flash-fr').textContent = card.answer;
-      $('flash-en').textContent = S.settings.english ? card.gloss : '';
+      // only echo the gloss when it says more than the prompt already did
+      $('flash-en').textContent = card.gloss === card.prompt ? '' : card.gloss;
       $('flash-phrase').textContent = v.gears[card.gearId].phrase[0];
+      $('flash-ask').hidden = false;
       $('flash-answer').hidden = true;
       $('flash-hint').hidden = false;
     }
@@ -445,6 +447,7 @@
       $('reveal-en').hidden = !S.settings.english;
       Speech.say(speakable(card.sentence));
     } else {
+      $('flash-ask').hidden = true;
       $('flash-answer').hidden = false;
       $('flash-hint').hidden = true;
       Speech.say(speakable(card.answer));
