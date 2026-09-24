@@ -1,103 +1,102 @@
 /* ==================================================================
    FRENCH FRIES · DESIGN TOKENS
-   The single source of truth for colour, space, type, radius,
-   elevation, motion and layering. Nothing below this file should
-   contain a raw hex value, a magic pixel or a hardcoded duration.
-   See DESIGN.md for the rules.
+
+   Light is the default. Dark is a palette swap — every rule in the
+   rest of the app references the semantic names below, never a
+   primitive and never a raw value, so a theme is a token override
+   and nothing else.
+
+   See DESIGN.md for the methodology.
 ================================================================== */
 
 :root {
-  /* ---------------------------------------------------- palette --
-     Primitives. Never referenced directly by components — always
-     through a semantic alias further down. */
-  --ink-950: #06070b;
-  --ink-900: #0b0d12;
-  --ink-850: #11141c;
-  --ink-800: #161a24;
-  --ink-700: #1d2230;
-  --ink-600: #262c3b;
-  --ink-500: #39415a;
+  /* ------------------------------------------------ palette (light)
+     Primitives. Components never reference these directly. */
+  --paper: #ffffff;
+  --paper-2: #f7f8fa;
+  --paper-3: #eef0f4;
 
-  --slate-400: #8590a8;
-  --slate-300: #aab3c6;
-  --slate-200: #cbd2e0;
-  --slate-100: #eef1f7;
+  --ink-900: #0c0e12;
+  --ink-600: #4b5563;
+  --ink-400: #6b7280;
 
-  --blue-500: #0a84ff;
-  --blue-600: #0068d6;
-  --green-500: #30d158;
-  --green-900: #14211a;
-  --green-700: #1f4430;
-  --red-500: #ff453a;
-  --red-900: #21161a;
-  --red-700: #4a2226;
-  --red-300: #ff8a80;
-  --amber-300: #ffd479;
+  --line-1: #e6e8ec;
+  --line-2: #d3d7de;
 
-  /* one hue per gear — the only place these live */
-  --gear-present: #34d399;
-  --gear-passe: #f472b6;
-  --gear-imparfait: #a78bfa;
-  --gear-futur: #38bdf8;
-  --gear-conditionnel: #fbbf24;
-  --gear-subjonctif: #fb7185;
+  --blue: #2563eb;
+  --blue-press: #1d4ed8;
+  --green: #15803d;
+  --red: #c02626;
 
-  /* --------------------------------------------------- semantic --
-     What components actually consume. */
-  --bg: var(--ink-900);
-  --bg-sunken: var(--ink-950);
-  --bg-raised: var(--ink-850);
-  --surface: var(--ink-800);
-  --surface-raised: var(--ink-700);
-  --border: var(--ink-600);
-  --border-strong: var(--ink-500);
+  /* one hue per gear — meaning, not decoration */
+  --gear-1: #0d8a5f;
+  --gear-2: #c2255c;
+  --gear-3: #6d43c8;
+  --gear-4: #0a6fb5;
+  --gear-5: #a06800;
+  --gear-6: #c0364f;
 
-  --text: var(--slate-100);
-  --text-muted: var(--slate-300);
-  --text-subtle: var(--slate-400);
-  --text-on-brand: #fff;
+  /* ------------------------------------------------------ semantic */
+  --bg: var(--paper);
+  --bg-sunken: var(--paper-2);
+  --bg-inset: var(--paper-3);
 
-  --brand: var(--blue-500);
-  --brand-pressed: var(--blue-600);
-  --accent: var(--amber-300);
-  --success: var(--green-500);
-  --danger: var(--red-500);
+  --text: var(--ink-900);
+  --text-muted: var(--ink-600);
+  --text-subtle: var(--ink-400);
+  --text-inverse: var(--paper);
+  /* text that sits on a brand fill — white in both themes, which is
+     why the dark brand is a shade deeper than the light one */
+  --on-brand: #ffffff;
 
-  /* set per element via [data-gear]; falls back to brand */
+  --line: var(--line-1);
+  --line-strong: var(--line-2);
+
+  --brand: var(--blue);
+  --brand-press: var(--blue-press);
+  --success: var(--green);
+  --danger: var(--red);
+
+  /* tinted washes, derived so they follow the theme automatically */
+  --wash-brand: color-mix(in srgb, var(--brand) 8%, transparent);
+  --wash-success: color-mix(in srgb, var(--success) 8%, transparent);
+  --wash-danger: color-mix(in srgb, var(--danger) 8%, transparent);
+  --wash-gear: color-mix(in srgb, var(--gear) 10%, transparent);
+
+  /* set per element with [data-gear]; defaults to brand */
   --gear: var(--brand);
 
-  /* ------------------------------------------------------- type -- */
+  color-scheme: light;
+
+  /* ---------------------------------------------------------- type
+     Seven roles. If a new size is needed, a role is missing. */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto,
     "Helvetica Neue", Arial, sans-serif;
 
-  --size-2xs: 11px;
-  --size-xs: 12px;
-  --size-sm: 13px;
-  --size-md: 15px;
-  --size-base: 17px;
-  --size-lg: 20px;
-  --size-xl: 26px;
-  --size-2xl: 32px;
-  --size-3xl: 38px;
+  --size-caption: 12px;
+  --size-small: 14px;
+  --size-body: 16px;
+  --size-lead: 18px;
+  --size-title: 22px;
+  --size-display: 30px;
+  --size-hero: 40px;
 
   --weight-regular: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
   --weight-bold: 700;
-  --weight-black: 800;
 
   --leading-tight: 1.15;
-  --leading-snug: 1.3;
-  --leading-normal: 1.45;
+  --leading-snug: 1.35;
+  --leading-normal: 1.5;
 
-  --tracking-tighter: -0.03em;
-  --tracking-tight: -0.015em;
-  --tracking-normal: 0;
-  --tracking-wide: 0.08em;
+  --tracking-tighter: -0.025em;
+  --tracking-tight: -0.012em;
+  --tracking-wide: 0.06em;
   --tracking-widest: 0.12em;
 
-  /* ------------------------------------------------------ space --
-     4pt scale. Padding, gaps and margins come from here only. */
+  /* --------------------------------------------------------- space
+     4pt scale. Every gap, pad and margin comes from here. */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -106,36 +105,38 @@
   --space-6: 24px;
   --space-7: 32px;
   --space-8: 40px;
-  --space-9: 48px;
-  --space-10: 64px;
+  --space-9: 56px;
+  --space-10: 72px;
 
-  /* ----------------------------------------------------- radius -- */
-  --radius-xs: 6px;
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 18px;
-  --radius-xl: 22px;
+  /* -------------------------------------------------------- radius
+     Small and few. Minimal UI does not need soft corners to read. */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-bubble: 18px;
   --radius-pill: 999px;
 
-  /* -------------------------------------------------- elevation -- */
-  --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
-  --shadow-md: 0 10px 30px -12px rgb(0 0 0 / 70%);
+  /* ----------------------------------------------------- elevation
+     Only overlays get a shadow. Surfaces use a hairline instead. */
+  --shadow-pop: 0 12px 32px -12px rgb(12 14 18 / 28%);
   --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--brand);
+  --hairline: 1px solid var(--line);
 
-  /* ----------------------------------------------------- motion -- */
-  --dur-1: 120ms;
-  --dur-2: 200ms;
-  --dur-3: 320ms;
+  /* -------------------------------------------------------- motion */
+  --dur-1: 110ms;
+  --dur-2: 180ms;
+  --dur-3: 280ms;
   --ease-out: cubic-bezier(0.2, 0.8, 0.3, 1);
   --ease-pop: cubic-bezier(0.2, 1.5, 0.4, 1);
 
-  /* ----------------------------------------------------- layout -- */
-  --app-width: 560px;
-  --control-height: 44px;   /* minimum comfortable touch target */
+  /* -------------------------------------------------------- layout */
+  --app-width: 540px;
+  --gutter: var(--space-5);
+  --control-height: 44px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 
-  /* ------------------------------------------------------- z-ix -- */
+  /* ---------------------------------------------------------- z-ix */
   --z-stage: 1;
   --z-tap: 3;
   --z-grade: 4;
@@ -144,11 +145,43 @@
   --z-dialog: 50;
 }
 
-/* Gear identity: set data-gear="<gear id>" on any element and every
-   descendant can style itself with var(--gear). */
-[data-gear='present'] { --gear: var(--gear-present); }
-[data-gear='passe'] { --gear: var(--gear-passe); }
-[data-gear='imparfait'] { --gear: var(--gear-imparfait); }
-[data-gear='futur'] { --gear: var(--gear-futur); }
-[data-gear='conditionnel'] { --gear: var(--gear-conditionnel); }
-[data-gear='subjonctif'] { --gear: var(--gear-subjonctif); }
+/* =================================================== dark override
+   Same semantic names, different primitives. Nothing else changes. */
+[data-theme='dark'] {
+  --paper: #0f1116;
+  --paper-2: #161a21;
+  --paper-3: #1d222b;
+
+  --ink-900: #edeff3;
+  --ink-600: #a8b0bd;
+  --ink-400: #838c9b;
+
+  --line-1: #262b34;
+  --line-2: #333945;
+
+  --blue: #2f6fd6;
+  --blue-press: #2861c0;
+  --green: #3ecf6d;
+  --red: #ff6b60;
+
+  --gear-1: #34d399;
+  --gear-2: #f472b6;
+  --gear-3: #a78bfa;
+  --gear-4: #38bdf8;
+  --gear-5: #fbbf24;
+  --gear-6: #fb7185;
+
+  --text-inverse: #0f1116;
+  --shadow-pop: 0 12px 32px -12px rgb(0 0 0 / 70%);
+
+  color-scheme: dark;
+}
+
+/* Gear identity: put data-gear="<id>" on an element and its whole
+   subtree can style itself with var(--gear). */
+[data-gear='present'] { --gear: var(--gear-1); }
+[data-gear='passe'] { --gear: var(--gear-2); }
+[data-gear='imparfait'] { --gear: var(--gear-3); }
+[data-gear='futur'] { --gear: var(--gear-4); }
+[data-gear='conditionnel'] { --gear: var(--gear-5); }
+[data-gear='subjonctif'] { --gear: var(--gear-6); }

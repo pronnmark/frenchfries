@@ -1,11 +1,11 @@
 /* ------------------------------------------------------------------
    app.js — screens, the chat-bubble loop, flashcards, audio, storage.
 
-   Conventions:
+   Conventions (see DESIGN.md):
    - DOM is built with h() — no innerHTML anywhere.
-   - Styling comes from the design system (css/*). This file sets
-     classes and data-gear; it never sets a colour or a pixel value.
-   - JS hooks are data-* attributes, not component class names.
+   - This file sets classes and data-gear. It never sets a colour,
+     a size or a spacing value; the design system owns those.
+   - JS hooks are data-* attributes, never component class names.
 ------------------------------------------------------------------ */
 (() => {
   const D = window.DATA;
@@ -13,7 +13,6 @@
   const GRADE = FSRS.GRADE;
 
   const $ = id => document.getElementById(id);
-  const txt = s => document.createTextNode(String(s));
 
   /** h('div', {class, text, lang, gear, attrs, on}, [children]) */
   function h(tag, opts, children) {
@@ -31,7 +30,17 @@
   }
   function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
 
-  /** Design-system switch: <span.switch><input><span.switch__track></span> */
+  const dot = () => h('span', { class: 'dot', attrs: { 'aria-hidden': 'true' } });
+  const gearIndex = g => h('span', { class: 'gear-index', text: g.n, attrs: { 'aria-hidden': 'true' } });
+
+  /** Fills an existing .gear-label element with its dot + text. */
+  function setGearLabel(el, gear, text) {
+    el.dataset.gear = gear.id;
+    clear(el);
+    el.appendChild(dot());
+    el.appendChild(h('span', { class: 'gear-label__text', text }));
+  }
+
   function switchEl(checked, label, onChange) {
     const input = h('input', {
       class: 'switch__input',
@@ -48,7 +57,15 @@
     onboarded: false,
     active: ['etre', 'avoir'],
     cards: {},
-    settings: { audio: true, english: true, rate: 0.85, voice: '', newPerSession: 8, sessionLen: 20 },
+    settings: {
+      theme: 'light',
+      audio: true,
+      english: true,
+      rate: 0.85,
+      voice: '',
+      newPerSession: 8,
+      sessionLen: 20
+    },
     streak: { count: 0, last: null },
     log: { reviews: 0, good: 0, again: 0 }
   };
@@ -79,6 +96,31 @@
     const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     S.streak.count = S.streak.last === y ? S.streak.count + 1 : 1;
     S.streak.last = t;
+  }
+
+  /* ------------------------------- theme -------------------------- */
+  const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+  function applyTheme() {
+    const choice = S.settings.theme || 'light';
+    const dark = choice === 'dark' || (choice === 'auto' && darkQuery.matches);
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    $('meta-theme').setAttribute('content', dark ? '#0f1116' : '#ffffff');
+    for (const b of document.querySelectorAll('[data-theme-choice]')) {
+      b.setAttribute('aria-pressed', String(b.dataset.themeChoice === choice));
+    }
+  }
+
+  darkQuery.addEventListener('change', () => {
+    if (S.settings.theme === 'auto') applyTheme();
+  });
+
+  for (const b of document.querySelectorAll('[data-theme-choice]')) {
+    b.addEventListener('click', () => {
+      S.settings.theme = b.dataset.themeChoice;
+      save();
+      applyTheme();
+    });
   }
 
   /* ------------------------------- audio -------------------------- */
@@ -218,48 +260,48 @@
     return sum / cards.length;
   }
 
-  function statTile(value, label) {
-    return h('div', { class: 'stat' }, [
-      h('b', { class: 'stat__value', text: value }),
-      h('span', { class: 'stat__label', text: label })
+  function metric(value, label) {
+    return h('div', { class: 'metric' }, [
+      h('b', { class: 'metric__value', text: value }),
+      h('span', { class: 'metric__label', text: label })
     ]);
+  }
+
+  function setCount(el, n) {
+    el.textContent = n || '✓';
+    el.className = n ? 'list__meta list__meta--active' : 'list__meta list__meta--done';
   }
 
   function renderHome() {
     const ready = readyCount('mixed');
-    const mixed = dueCount('mixed');
     const pool = poolFor('mixed');
 
     $('home-due').textContent = ready;
-    $('home-due-sub').textContent = ready === 1 ? 'card ready' : 'cards ready';
-    $('home-streak').textContent = `🔥 ${S.streak.count}`;
-    $('home-newcount').textContent = `${Math.min(mixed.fresh, S.settings.newPerSession)} new`;
-    $('home-totalcount').textContent = `${S.active.length} verbs · ${pool.length} cards in rotation`;
+    $('home-due-sub').textContent =
+      `${ready === 1 ? 'card' : 'cards'} ready · ${S.active.length} verbs in rotation`;
+    $('home-streak').textContent = `${S.streak.count}-day streak`;
 
     let seen = 0;
     for (const c of pool) if (S.cards[c.id]) seen++;
     $('home-bar').style.width = `${Math.round(seen / Math.max(pool.length, 1) * 100)}%`;
 
-    $('count-chat').textContent = readyCount('chat') || '✓';
-    $('count-flash').textContent = readyCount('flash') || '✓';
-    $('count-mixed').textContent = ready || '✓';
+    setCount($('count-chat'), readyCount('chat'));
+    setCount($('count-flash'), readyCount('flash'));
+    setCount($('count-mixed'), ready);
 
-    // ---- verb garage
+    // ---- garage
     const list = $('verb-list');
     clear(list);
     for (const v of VERBS) {
       const on = S.active.includes(v.id);
       const pct = Math.round(verbProgress(v.id) * 100);
       const main = h('button', {
-        class: 'list-row__main',
+        class: 'list__body',
         attrs: { 'aria-label': `${v.inf} — ${v.en}, ${pct}% learned. Open dashboard.` },
         on: { click: () => openVerb(v.id) }
       }, [
-        h('span', { class: 'verb-list__inf', lang: 'fr' }, [txt(v.inf), h('span', { class: 'tag', text: v.family })]),
-        h('span', { class: 'verb-list__en', text: v.en }),
-        h('span', { class: 'meter meter--inline' }, [
-          h('span', { class: 'meter__fill meter__fill--brand', style: { width: `${pct}%` } })
-        ])
+        h('span', { class: 'list__title', lang: 'fr', text: v.inf }),
+        h('span', { class: 'list__sub', text: `${v.en} · ${v.family}` })
       ]);
 
       const sw = switchEl(on, `Keep ${v.inf} in rotation`, e => {
@@ -273,20 +315,25 @@
         save();
         renderHome();
       });
-      list.appendChild(h('div', { class: `list-row${on ? '' : ' list-row--off'}` }, [main, sw]));
+
+      list.appendChild(h('div', { class: `list__item${on ? '' : ' list__item--muted'}` }, [
+        main,
+        h('span', { class: 'list__meta', text: `${pct}%` }),
+        sw
+      ]));
     }
 
-    // ---- stats
+    // ---- progress
     let mature = 0;
     for (const c of pool) if (strengthOf(c.id) > 0.8) mature++;
     const acc = S.log.reviews ? Math.round(S.log.good / S.log.reviews * 100) : 0;
-    const grid = $('stat-grid');
-    clear(grid);
-    grid.appendChild(statTile(S.log.reviews, 'reps'));
-    grid.appendChild(statTile(`${acc}%`, 'instant'));
-    grid.appendChild(statTile(mature, 'mastered'));
+    const row = $('stat-row');
+    clear(row);
+    row.appendChild(metric(S.log.reviews, 'reps'));
+    row.appendChild(metric(`${acc}%`, 'instant'));
+    row.appendChild(metric(mature, 'mastered'));
 
-    // ---- per-gear mastery
+    // ---- mastery by gear
     const mastery = $('mastery');
     clear(mastery);
     for (const g of GEARS) {
@@ -294,7 +341,8 @@
       for (const c of pool) if (c.gearId === g.id) { sum += strengthOf(c.id); n++; }
       const pct = n ? Math.round(sum / n * 100) : 0;
       mastery.appendChild(h('div', { class: 'mastery__row', gear: g.id }, [
-        h('span', { class: 'mastery__name', text: `${g.icon} ${g.nick}` }),
+        dot(),
+        h('span', { class: 'mastery__name', text: g.nick }),
         h('span', { class: 'meter mastery__meter' }, [
           h('span', { class: 'meter__fill meter__fill--gear', style: { width: `${pct}%` } })
         ]),
@@ -309,10 +357,10 @@
     clear(ol);
     for (const g of GEARS) {
       ol.appendChild(h('li', { class: 'gear-list__item', gear: g.id }, [
-        h('span', { class: 'gear-list__n', text: g.n }),
+        gearIndex(g),
         h('span', null, [
           h('span', { class: 'gear-list__name', text: g.nick }),
-          h('span', { class: 'gear-list__meta', text: `${g.en} · ${g.fr} — ${g.when}` })
+          h('span', { class: 'gear-list__meta', text: `${g.fr} — ${g.when}` })
         ])
       ]));
     }
@@ -320,7 +368,11 @@
 
   /* --------------------------- gears screen ----------------------- */
   function exampleEl(phrase) {
-    return h('button', { class: 'example', on: { click: () => Speech.say(phrase[0], true) } }, [
+    return h('button', {
+      class: 'example',
+      attrs: { 'aria-label': `${phrase[0]} — ${phrase[1]}. Hear it.` },
+      on: { click: () => Speech.say(phrase[0], true) }
+    }, [
       h('span', { class: 'example__fr', lang: 'fr', text: phrase[0] }),
       h('span', { class: 'example__en', text: phrase[1] })
     ]);
@@ -331,18 +383,21 @@
     clear(body);
     body.appendChild(h('p', {
       class: 'section__sub',
-      text: 'You do not need 21 tenses. You need 6 gears — Time, Shape (aspect) and Mood, sorted by what they actually do in a conversation. Examples use avoir; tap one to hear it.'
+      text: 'Six gears — Time, Shape and Mood — sorted by what they do in a conversation. Examples use avoir; tap one to hear it.'
     }));
     const ref = VERB_BY_ID.avoir;
     for (const g of GEARS) {
-      body.appendChild(h('section', { class: 'card card--gear', gear: g.id }, [
-        h('p', { class: 'gear-doc__fr', text: `Gear ${g.n} · ${g.fr}` }),
-        h('h2', { class: 'gear-doc__title', text: `${g.icon} ${g.nick}` }),
+      body.appendChild(h('section', { class: 'gear-doc', gear: g.id }, [
+        h('div', { class: 'gear-doc__head' }, [
+          gearIndex(g),
+          h('h2', { class: 'gear-doc__title', text: g.nick })
+        ]),
+        h('p', { class: 'gear-doc__fr', text: `${g.en} · ${g.fr}` }),
         h('p', { class: 'gear-doc__instruction', text: g.instruction }),
         exampleEl(ref.gears[g.id].phrase)
       ]));
     }
-    body.appendChild(h('div', { class: 'u-pad-bottom' }));
+    body.appendChild(h('div', { class: 'u-tail' }));
   }
 
   /* --------------------------- verb dashboard --------------------- */
@@ -371,10 +426,10 @@
       save();
       toast(e.target.checked ? `${v.inf} added to rotation` : `${v.inf} paused`);
     });
-    body.appendChild(h('div', { class: 'card row' }, [
+    body.appendChild(h('div', { class: 'row' }, [
       h('div', { class: 'row__body' }, [
         h('p', { class: 'row__title', text: 'In rotation' }),
-        h('p', { class: 'row__sub', text: 'Include this verb in your daily reviews.' })
+        h('p', { class: 'row__sub', text: 'Tap any line below to hear it.' })
       ]),
       sw
     ]));
@@ -389,26 +444,22 @@
           on: { click: () => Speech.say(speakable(f), true) }
         }, [
           h('span', { class: 'conj__fr', lang: 'fr', text: f }),
-          h('span', { class: 'conj__en', text: D.glossFor(v, g.id, i) }),
-          h('span', { class: 'conj__speaker', text: '🔊', attrs: { 'aria-hidden': 'true' } })
+          h('span', { class: 'conj__en', text: D.glossFor(v, g.id, i) })
         ]));
       });
 
-      const example = exampleEl(gg.phrase);
-      example.classList.add('gear-block__example');
-
-      body.appendChild(h('section', { class: 'card card--gear', gear: g.id }, [
+      body.appendChild(h('section', { class: 'gear-block', gear: g.id }, [
         h('div', { class: 'gear-block__head' }, [
-          h('span', { class: 'gear-block__n', text: g.n }),
-          h('h2', { class: 'gear-block__title', text: `${g.icon} ${g.nick}` }),
+          gearIndex(g),
+          h('h2', { class: 'gear-block__title', text: g.nick }),
           h('span', { class: 'gear-block__fr', text: g.fr })
         ]),
         h('p', { class: 'gear-block__instruction', text: g.instruction }),
         conj,
-        example,
+        exampleEl(gg.phrase),
         h('button', {
-          class: 'btn btn--ghost gear-block__drill',
-          text: 'Drill this gear 💬',
+          class: 'btn gear-block__drill',
+          text: 'Drill this gear',
           on: {
             click: () => startDrill({
               label: `${v.inf} · ${g.nick}`,
@@ -418,7 +469,7 @@
         })
       ]));
     }
-    body.appendChild(h('div', { class: 'u-pad-bottom' }));
+    body.appendChild(h('div', { class: 'u-tail' }));
     show('verb');
   }
 
@@ -466,7 +517,7 @@
     if (card.kind === 'chat') {
       $('thread').hidden = false;
       $('flashcard').hidden = true;
-      $('thread-head').textContent = `${v.inf} · ${g.icon} ${g.nick}`;
+      $('thread-head').textContent = `${v.inf} · ${g.nick}`;
       $('bubble-in-text').textContent = card.incoming;
       $('bubble-in-en').textContent = card.incomingEn;
       $('bubble-in-en').hidden = !S.settings.english;
@@ -475,16 +526,13 @@
       const blank = $('reply-blank');
       blank.textContent = '________';
       blank.className = 'blank';
-      const vibe = $('vibe-tag');
-      vibe.textContent = `${g.icon} The Vibe: ${g.vibe}`;
-      vibe.dataset.gear = g.id;
+      setGearLabel($('vibe-tag'), g, `The Vibe: ${g.vibe}`);
       $('reveal-en').textContent = card.replyEn;
       $('reveal-en').hidden = true;
     } else {
       $('thread').hidden = true;
       $('flashcard').hidden = false;
-      $('flashcard').dataset.gear = g.id;
-      $('flash-gear').textContent = `${g.icon} ${g.nick} · ${g.fr}`;
+      setGearLabel($('flash-gear'), g, `${g.nick} · ${g.fr}`);
       $('flash-context').textContent = `${v.inf} · ${v.en}`;
       $('flash-prompt').textContent = `“${card.prompt}”`;
       $('flash-fr').textContent = card.answer;
@@ -638,6 +686,7 @@
     $('set-rate').value = S.settings.rate;
     $('set-new').value = S.settings.newPerSession;
     $('set-len').value = S.settings.sessionLen;
+    applyTheme();
     renderVoices();
   }
 
@@ -676,6 +725,7 @@
         const data = JSON.parse(r.result);
         S = { ...DEFAULTS, ...data, settings: { ...DEFAULTS.settings, ...(data.settings || {}) } };
         save();
+        applyTheme();
         renderHome();
         renderSettings();
         toast('Progress imported');
@@ -695,6 +745,7 @@
     localStorage.removeItem(KEY);
     S = structuredClone(DEFAULTS);
     save();
+    applyTheme();
     renderHome();
     renderSettings();
     toast('Progress reset');
@@ -706,9 +757,10 @@
   $('verb-speak').addEventListener('click', () => Speech.say(VERB_BY_ID[openVerbId].inf, true));
 
   function syncAudioIcon() {
-    const b = $('drill-audio');
-    b.textContent = S.settings.audio ? '🔊' : '🔇';
-    b.setAttribute('aria-label', S.settings.audio ? 'Mute audio' : 'Unmute audio');
+    const on = S.settings.audio;
+    $('icon-sound-on').hidden = !on;
+    $('icon-sound-off').hidden = on;
+    $('drill-audio').setAttribute('aria-label', on ? 'Mute audio' : 'Unmute audio');
   }
   $('drill-audio').addEventListener('click', () => {
     S.settings.audio = !S.settings.audio;
@@ -735,6 +787,7 @@
   }
 
   /* -------------------------------- boot -------------------------- */
+  applyTheme();
   Speech.init();
   renderOnboarding();
   renderHome();

@@ -27,12 +27,13 @@ body {
   background: var(--bg-sunken);
   color: var(--text);
   font-family: var(--font-sans);
-  font-size: var(--size-base);
+  font-size: var(--size-body);
   line-height: var(--leading-normal);
   overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
 }
 
-h1, h2, h3, h4, p, ol, ul, figure {
+h1, h2, h3, h4, p, ol, ul, figure, dl {
   margin: 0;
 }
 
@@ -42,9 +43,10 @@ ol, ul {
 }
 
 h1, h2, h3, h4 {
+  font-size: inherit;
+  font-weight: var(--weight-semibold);
   line-height: var(--leading-tight);
   letter-spacing: var(--tracking-tight);
-  font-weight: var(--weight-bold);
 }
 
 button,
@@ -65,18 +67,18 @@ b, strong {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--brand) 45%, transparent);
+  background: color-mix(in srgb, var(--brand) 22%, transparent);
 }
 
-/* One visible focus treatment everywhere, keyboard only. */
+/* One focus treatment everywhere, keyboard only. Never removed. */
 :focus-visible {
   outline: none;
   box-shadow: var(--ring);
   border-radius: var(--radius-sm);
 }
 
-/* French strings carry lang="fr" so speech synthesis and screen readers
-   pronounce them correctly rather than reading French as English. */
+/* French strings carry lang="fr" so speech synthesis and screen
+   readers switch voice instead of reading French as English. */
 [lang='fr'] {
   font-synthesis: none;
 }
@@ -92,26 +94,19 @@ b, strong {
 }
 
 /* ------------------------------------------------------ utilities --
-   Deliberately few. If a utility is reached for three times, it should
-   become a component instead. */
+   Deliberately few. A utility reached for three times should become
+   a component instead. */
 .u-muted { color: var(--text-muted); }
 .u-subtle { color: var(--text-subtle); }
 .u-center { text-align: center; }
-.u-pad-bottom { height: var(--space-10); }
+.u-tail { height: var(--space-10); }
 
 .eyebrow {
-  font-size: var(--size-sm);
+  font-size: var(--size-caption);
   font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-wide);
+  letter-spacing: var(--tracking-widest);
   text-transform: uppercase;
   color: var(--text-subtle);
-}
-
-.text-gradient {
-  background: linear-gradient(95deg, var(--amber-300), var(--red-500) 55%, var(--gear-imparfait));
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
 }
 
 .visually-hidden {

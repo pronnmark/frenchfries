@@ -103,17 +103,26 @@ rate in Settings.
 Everything lives in `localStorage` under `frenchfries.v1` — progress never leaves the device.
 Settings has **Export / Import** (plain JSON) to move a profile between browsers, and a reset.
 
-## Design system
+## Design
 
-The UI is built on a token layer, not ad-hoc CSS — see **[DESIGN.md](DESIGN.md)**.
+Light by default, dark on request, built on a token layer — the full methodology is in
+**[DESIGN.md](DESIGN.md)**.
 
-> Tokens decide, components express, screens compose.
+> Tokens decide. Components express. Screens compose.
 
-`tokens.css` is the only file allowed to contain a raw value; `components.css` holds the kit
-(`.card`, `.btn`, `.pill`, `.switch`, `.meter`, `.bubble`, `.grade`, `.dialog`…); `screens.css`
-only composes them. JS hooks are `data-*` attributes, never component classes, so styling can be
-renamed without breaking behaviour. Each gear owns one hue, declared once — set
-`data-gear="imparfait"` on any element and its subtree can use `var(--gear)`.
+The interface is deliberately quiet: hairlines instead of boxes, type instead of panels, and
+colour reserved for exactly three jobs — **gear identity** (six hues), **action** (brand blue) and
+**state** (success, danger). Nothing is coloured for decoration, which is why a gear's dot reads
+instantly.
+
+`tokens.css` is the only file allowed a raw value and holds both themes; `components.css` is the
+kit (`.list`, `.btn`, `.dot`, `.switch`, `.meter`, `.bubble`, `.grade`, `.dialog`…);
+`screens.css` only composes it. JS hooks are `data-*` attributes, never component classes, so a
+class can be renamed without breaking behaviour, and `app.js` never sets a colour or a pixel.
+
+Dark mode is the same semantic tokens with different primitives — `[data-theme='dark']` swaps the
+palette and nothing else changes. Theme is applied before first paint, so there is no flash.
+**Settings → Appearance** offers Light / Dark / Auto.
 
 ## Checks
 

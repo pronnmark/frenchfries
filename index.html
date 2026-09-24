@@ -1,11 +1,25 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b0d12">
+<meta name="theme-color" content="#ffffff" id="meta-theme">
 <meta name="description" content="French Fries — learn French verbs in 6 gears with chat-bubble drills, native audio and FSRS spaced repetition.">
 <title>French Fries · 6-Gear Verb Engine</title>
+
+<script>
+/* Theme before first paint, so there is no flash of the wrong palette. */
+(() => {
+  let theme = 'light';
+  try {
+    const saved = JSON.parse(localStorage.getItem('frenchfries.v1') || '{}');
+    theme = (saved.settings && saved.settings.theme) || 'light';
+  } catch { /* first run */ }
+  const dark = theme === 'dark' ||
+    (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+})();
+</script>
 
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/base.css">
@@ -17,33 +31,55 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="French Fries">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 </head>
 <body>
+
+<!-- Icon set: monochrome, stroke-based, inherits currentColor. -->
+<svg class="visually-hidden" aria-hidden="true">
+  <defs>
+    <g id="i-back" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14.5 5.5 8 12l6.5 6.5"/>
+    </g>
+    <g id="i-settings" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
+      <path d="M3 7.5h8M15.5 7.5H21M3 16.5h5.5M13 16.5h8"/>
+      <circle cx="13" cy="7.5" r="2.25"/>
+      <circle cx="10.5" cy="16.5" r="2.25"/>
+    </g>
+    <g id="i-sound-on" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 9.5h3L11.5 6v12L7 14.5H4z"/>
+      <path d="M15 9.5a3.5 3.5 0 0 1 0 5"/>
+      <path d="M17.5 7a7 7 0 0 1 0 10"/>
+    </g>
+    <g id="i-sound-off" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 9.5h3L11.5 6v12L7 14.5H4z"/>
+      <path d="m15.5 9.5 5 5M20.5 9.5l-5 5"/>
+    </g>
+  </defs>
+</svg>
 
 <!-- ============================= ONBOARDING ============================= -->
 <section class="screen" id="screen-onboarding" aria-label="Welcome" hidden>
   <div class="screen__scroll">
     <div class="onboarding">
-      <div class="onboarding__logo" aria-hidden="true">🍟</div>
-      <h1 class="onboarding__title">Welcome to the<br><span class="text-gradient">6-Gear Verb Engine</span></h1>
+      <p class="eyebrow">French Fries</p>
+      <h1 class="onboarding__title">Six gears, not twenty-one tenses.</h1>
       <p class="onboarding__lead">
-        To speak fluid French, you do not need 21 tenses.<br>
-        You only need <b>6 gears</b>. Every verb here is broken down by how it
-        actually functions in a conversation.
+        Every verb here is broken down by how it actually functions in a conversation —
+        not by a grammar table.
       </p>
 
       <ol class="gear-list" id="ob-gears"></ol>
 
-      <div class="card card--quiet">
-        <h2 class="eyebrow">The loop</h2>
-        <p class="u-muted">
-          <b>Read the chat → think of the word → tap to check → swipe to grade.</b>
-          No typing. No multiple choice. 50 reps in 3 minutes while you wait for the bus.
+      <div class="onboarding__loop">
+        <h2 class="section__title">The loop</h2>
+        <p>
+          Read the chat, think of the word, tap to check, swipe to grade.
+          No typing. No multiple choice. Fifty reps while you wait for the bus.
         </p>
       </div>
 
-      <button class="btn btn--primary btn--block btn--lg" id="ob-start">Start the engine</button>
+      <button class="btn btn--primary btn--block btn--lg" id="ob-start">Start</button>
     </div>
   </div>
 </section>
@@ -52,72 +88,87 @@
 <section class="screen" id="screen-home" aria-label="Home" hidden>
   <header class="appbar">
     <span class="appbar__slot"></span>
-    <h1 class="appbar__title"><span aria-hidden="true">🍟</span> French Fries</h1>
-    <button class="icon-btn appbar__slot" id="home-settings" aria-label="Settings">⚙</button>
+    <h1 class="appbar__title">French Fries</h1>
+    <button class="icon-btn appbar__slot" id="home-settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-settings"/></svg>
+    </button>
   </header>
 
   <div class="screen__scroll">
-    <section class="card card--hero" aria-label="Today">
-      <div class="row">
-        <div class="row__body">
-          <p class="today__label">Today</p>
+    <section class="today" aria-label="Today">
+      <div class="today__head">
+        <div>
+          <p class="eyebrow">Today</p>
           <p class="today__count" id="home-due">0</p>
           <p class="today__sub" id="home-due-sub">cards ready</p>
         </div>
-        <p class="today__streak" id="home-streak" title="Day streak">🔥 0</p>
+        <p class="today__streak" id="home-streak">0-day streak</p>
       </div>
       <div class="meter today__meter">
         <span class="meter__fill meter__fill--brand" id="home-bar"></span>
       </div>
-      <div class="today__foot">
-        <span id="home-newcount">0 new</span>
-        <span id="home-totalcount">0 in rotation</span>
-      </div>
     </section>
 
-    <nav class="mode-grid" aria-label="Practice modes">
-      <button class="card card--interactive mode-tile" data-mode="chat">
-        <span class="mode-tile__icon" aria-hidden="true">💬</span>
-        <span class="mode-tile__title">Chat Drill</span>
-        <span class="mode-tile__sub">Real text-message context. The core loop.</span>
-        <span class="mode-tile__count" id="count-chat">—</span>
-      </button>
-      <button class="card card--interactive mode-tile" data-mode="flash">
-        <span class="mode-tile__icon" aria-hidden="true">🃏</span>
-        <span class="mode-tile__title">Flashcards</span>
-        <span class="mode-tile__sub">English in, French out. Swipe-graded.</span>
-        <span class="mode-tile__count" id="count-flash">—</span>
-      </button>
-      <button class="card card--interactive mode-tile" data-mode="mixed">
-        <span class="mode-tile__icon" aria-hidden="true">⚡</span>
-        <span class="mode-tile__title">Mixed Review</span>
-        <span class="mode-tile__sub">Everything the algorithm says is due now.</span>
-        <span class="mode-tile__count" id="count-mixed">—</span>
-      </button>
-      <button class="card card--interactive mode-tile" data-mode="gears">
-        <span class="mode-tile__icon" aria-hidden="true">⚙</span>
-        <span class="mode-tile__title">The 6 Gears</span>
-        <span class="mode-tile__sub">What each gear means, and when to use it.</span>
-        <span class="mode-tile__count">6</span>
-      </button>
+    <nav class="section" aria-label="Practice modes">
+      <div class="list">
+        <button class="list__item" data-mode="chat">
+          <span class="list__body">
+            <span class="list__title">Chat Drill</span>
+            <span class="list__sub">Real text-message context. The core loop.</span>
+          </span>
+          <span class="list__meta list__meta--active" id="count-chat">—</span>
+        </button>
+        <button class="list__item" data-mode="flash">
+          <span class="list__body">
+            <span class="list__title">Flashcards</span>
+            <span class="list__sub">English in, French out.</span>
+          </span>
+          <span class="list__meta list__meta--active" id="count-flash">—</span>
+        </button>
+        <button class="list__item" data-mode="mixed">
+          <span class="list__body">
+            <span class="list__title">Mixed Review</span>
+            <span class="list__sub">Everything due right now.</span>
+          </span>
+          <span class="list__meta list__meta--active" id="count-mixed">—</span>
+        </button>
+        <button class="list__item" data-mode="gears">
+          <span class="list__body">
+            <span class="list__title">The Six Gears</span>
+            <span class="list__sub">What each gear means, and when to use it.</span>
+          </span>
+          <span class="list__meta">6</span>
+        </button>
+      </div>
     </nav>
 
-    <h2 class="section__title">Your garage</h2>
-    <p class="section__sub">Tap a verb for its 6-gear dashboard. Use the switch to put it in rotation.</p>
-    <div class="verb-list" id="verb-list"></div>
+    <section class="section" aria-label="Verbs">
+      <h2 class="section__title">Garage</h2>
+      <p class="section__sub">Tap a verb for its six-gear dashboard. The switch puts it in rotation.</p>
+      <div class="list" id="verb-list"></div>
+    </section>
 
-    <h2 class="section__title">Progress</h2>
-    <div class="stat-grid" id="stat-grid"></div>
-    <div class="mastery" id="mastery"></div>
-    <div class="u-pad-bottom"></div>
+    <section class="section" aria-label="Progress">
+      <h2 class="section__title">Progress</h2>
+      <div class="stat-row" id="stat-row"></div>
+    </section>
+
+    <section class="section" aria-label="Mastery by gear">
+      <h2 class="section__title">By gear</h2>
+      <div class="mastery" id="mastery"></div>
+    </section>
+
+    <div class="u-tail"></div>
   </div>
 </section>
 
 <!-- ================================ GEARS =============================== -->
 <section class="screen" id="screen-gears" aria-label="The six gears" hidden>
   <header class="appbar">
-    <button class="icon-btn" data-back aria-label="Go back">‹</button>
-    <h1 class="appbar__title">The 6 Gears</h1>
+    <button class="icon-btn" data-back aria-label="Go back">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"/></svg>
+    </button>
+    <h1 class="appbar__title">The Six Gears</h1>
     <span class="appbar__slot"></span>
   </header>
   <div class="screen__scroll" id="gears-body"></div>
@@ -126,9 +177,13 @@
 <!-- =============================== DASHBOARD ============================ -->
 <section class="screen" id="screen-verb" aria-label="Verb dashboard" hidden>
   <header class="appbar">
-    <button class="icon-btn" data-back aria-label="Go back">‹</button>
+    <button class="icon-btn" data-back aria-label="Go back">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"/></svg>
+    </button>
     <h1 class="appbar__title" id="verb-title">Verb</h1>
-    <button class="icon-btn" id="verb-speak" aria-label="Hear the infinitive">🔊</button>
+    <button class="icon-btn" id="verb-speak" aria-label="Hear the infinitive">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sound-on"/></svg>
+    </button>
   </header>
   <div class="screen__scroll" id="verb-body"></div>
 </section>
@@ -136,14 +191,19 @@
 <!-- ================================ DRILL =============================== -->
 <section class="screen" id="screen-drill" aria-label="Practice session" hidden>
   <header class="appbar">
-    <button class="icon-btn" data-back aria-label="Leave this session">‹</button>
+    <button class="icon-btn" data-back aria-label="Leave this session">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"/></svg>
+    </button>
     <div class="appbar__progress">
       <div class="meter meter--thin">
-        <span class="meter__fill meter__fill--accent" id="drill-bar"></span>
+        <span class="meter__fill" id="drill-bar"></span>
       </div>
       <p class="appbar__count" id="drill-count">0 / 0</p>
     </div>
-    <button class="icon-btn" id="drill-audio" aria-label="Toggle audio">🔊</button>
+    <button class="icon-btn" id="drill-audio" aria-label="Mute audio">
+      <svg viewBox="0 0 24 24" aria-hidden="true" id="icon-sound-on"><use href="#i-sound-on"/></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" id="icon-sound-off" hidden><use href="#i-sound-off"/></svg>
+    </button>
   </header>
 
   <div class="drill__stage" id="drill-stage">
@@ -157,13 +217,13 @@
       <p class="bubble bubble--out" lang="fr">
         <span id="reply-pre"></span><span class="blank" id="reply-blank">________</span><span id="reply-post"></span>
       </p>
-      <span class="pill thread__vibe" id="vibe-tag"></span>
+      <p class="thread__vibe"><span class="gear-label" id="vibe-tag"></span></p>
       <p class="thread__reveal" id="reveal-en" hidden></p>
     </div>
 
     <!-- flashcard: English prompt in, French answer out -->
     <div class="flashcard" id="flashcard" hidden>
-      <span class="pill pill--gear" id="flash-gear"></span>
+      <span class="gear-label flashcard__gear" id="flash-gear"></span>
       <p class="flashcard__context" id="flash-context"></p>
       <p class="flashcard__prompt" id="flash-prompt"></p>
       <p class="flashcard__ask" id="flash-ask">say it in French</p>
@@ -172,7 +232,7 @@
         <p class="flashcard__en" id="flash-en"></p>
         <p class="flashcard__phrase" id="flash-phrase" lang="fr"></p>
       </div>
-      <p class="flashcard__hint" id="flash-hint">tap to reveal the French</p>
+      <p class="flashcard__hint" id="flash-hint">tap to reveal</p>
     </div>
   </div>
 
@@ -180,110 +240,128 @@
 
   <div class="grade" id="grade-zone" hidden>
     <button class="grade__btn grade__btn--again" id="grade-again">
-      <span class="grade__dot" aria-hidden="true">🔴</span>
-      <span class="grade__label">Wrong / too slow</span>
+      <span class="grade__dot" aria-hidden="true"></span>
+      <span class="grade__label">Again</span>
       <span class="grade__when" id="when-again">3 min</span>
     </button>
     <button class="grade__btn grade__btn--good" id="grade-good">
-      <span class="grade__dot" aria-hidden="true">🟢</span>
-      <span class="grade__label">Knew it instantly</span>
+      <span class="grade__dot" aria-hidden="true"></span>
+      <span class="grade__label">Knew it</span>
       <span class="grade__when" id="when-good">3 days</span>
     </button>
   </div>
 
-  <p class="drill__hint" id="swipe-hint" hidden>← swipe left · swipe right →</p>
+  <p class="drill__hint" id="swipe-hint" hidden>swipe left to repeat · swipe right to keep</p>
 
   <div class="done" id="drill-done" hidden>
-    <div class="done__icon" aria-hidden="true">✓</div>
     <h2 class="done__title">Session done</h2>
     <p class="done__summary" id="done-summary"></p>
     <button class="btn btn--primary btn--block" id="done-again">Another round</button>
-    <button class="btn btn--ghost btn--block" data-back>Back home</button>
+    <button class="btn btn--block" data-back>Back home</button>
   </div>
 </section>
 
 <!-- =============================== SETTINGS ============================= -->
 <section class="screen" id="screen-settings" aria-label="Settings" hidden>
   <header class="appbar">
-    <button class="icon-btn" data-back aria-label="Go back">‹</button>
+    <button class="icon-btn" data-back aria-label="Go back">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"/></svg>
+    </button>
     <h1 class="appbar__title">Settings</h1>
     <span class="appbar__slot"></span>
   </header>
 
   <div class="screen__scroll">
-    <div class="card row">
-      <div class="row__body">
-        <p class="row__title">Auto-play audio on reveal</p>
-        <p class="row__sub">Ties the written form to the phonological loop.</p>
+    <section class="settings__group">
+      <h2 class="section__title">Appearance</h2>
+      <div class="row">
+        <div class="row__body">
+          <p class="row__title">Theme</p>
+          <p class="row__sub">Auto follows your system setting.</p>
+        </div>
+        <div class="segment" id="theme-segment" role="group" aria-label="Theme">
+          <button class="segment__btn" data-theme-choice="light" aria-pressed="false">Light</button>
+          <button class="segment__btn" data-theme-choice="dark" aria-pressed="false">Dark</button>
+          <button class="segment__btn" data-theme-choice="auto" aria-pressed="false">Auto</button>
+        </div>
       </div>
-      <span class="switch">
-        <input class="switch__input" type="checkbox" id="set-audio" aria-label="Auto-play audio on reveal">
-        <span class="switch__track"></span>
-      </span>
-    </div>
+    </section>
 
-    <div class="card row">
-      <div class="row__body">
-        <p class="row__title">Show English translation</p>
-        <p class="row__sub">Turn off for pure immersion in the chat drill.</p>
+    <section class="settings__group">
+      <h2 class="section__title">Practice</h2>
+
+      <div class="row">
+        <div class="row__body">
+          <p class="row__title">Audio on reveal</p>
+          <p class="row__sub">Ties the written form to the sound.</p>
+        </div>
+        <span class="switch">
+          <input class="switch__input" type="checkbox" id="set-audio" aria-label="Auto-play audio on reveal">
+          <span class="switch__track"></span>
+        </span>
       </div>
-      <span class="switch">
-        <input class="switch__input" type="checkbox" id="set-english" aria-label="Show English translation">
-        <span class="switch__track"></span>
-      </span>
-    </div>
 
-    <div class="card row">
-      <div class="row__body">
-        <label class="row__title" for="set-rate">Speech rate</label>
-        <p class="row__sub">Slower is better while you are still decoding.</p>
+      <div class="row">
+        <div class="row__body">
+          <p class="row__title">English translation</p>
+          <p class="row__sub">Off for pure immersion in the chat drill.</p>
+        </div>
+        <span class="switch">
+          <input class="switch__input" type="checkbox" id="set-english" aria-label="Show English translation">
+          <span class="switch__track"></span>
+        </span>
       </div>
-      <input class="field__control field__control--range" type="range" id="set-rate" min="0.5" max="1.2" step="0.05">
-    </div>
 
-    <div class="card row">
-      <div class="row__body">
-        <label class="row__title" for="set-new">New cards per session</label>
-        <p class="row__sub">How many unseen items get introduced.</p>
+      <div class="row">
+        <div class="row__body">
+          <label class="row__title" for="set-new">New cards per session</label>
+          <p class="row__sub">How many unseen items get introduced.</p>
+        </div>
+        <input class="field__control field__control--number" type="number" id="set-new" min="0" max="40" step="1">
       </div>
-      <input class="field__control field__control--number" type="number" id="set-new" min="0" max="40" step="1">
-    </div>
 
-    <div class="card row">
-      <div class="row__body">
-        <label class="row__title" for="set-len">Session length</label>
-        <p class="row__sub">Cards per round.</p>
+      <div class="row">
+        <div class="row__body">
+          <label class="row__title" for="set-len">Session length</label>
+          <p class="row__sub">Cards per round.</p>
+        </div>
+        <input class="field__control field__control--number" type="number" id="set-len" min="5" max="200" step="5">
       </div>
-      <input class="field__control field__control--number" type="number" id="set-len" min="5" max="200" step="5">
-    </div>
+    </section>
 
-    <div class="card row">
-      <div class="row__body">
-        <label class="row__title" for="set-voice">French voice</label>
-        <p class="row__sub" id="voice-sub">Uses your device's native French voice.</p>
+    <section class="settings__group">
+      <h2 class="section__title">Voice</h2>
+
+      <div class="row">
+        <div class="row__body">
+          <label class="row__title" for="set-voice">French voice</label>
+          <p class="row__sub" id="voice-sub">Uses your device's native French voice.</p>
+        </div>
+        <select class="field__control field__control--select" id="set-voice"></select>
       </div>
-      <select class="field__control field__control--select" id="set-voice"></select>
-    </div>
 
-    <div class="card">
-      <p class="row__title">Data</p>
-      <p class="row__sub">Everything is stored locally in this browser.</p>
+      <div class="row">
+        <div class="row__body">
+          <label class="row__title" for="set-rate">Speech rate</label>
+          <p class="row__sub">Slower is better while you are still decoding.</p>
+        </div>
+        <input class="field__control field__control--range" type="range" id="set-rate" min="0.5" max="1.2" step="0.05">
+      </div>
+    </section>
+
+    <section class="settings__group">
+      <h2 class="section__title">Data</h2>
+      <p class="section__sub">Everything is stored locally in this browser.</p>
       <div class="settings__actions">
-        <button class="btn btn--ghost" id="set-export">Export progress</button>
-        <button class="btn btn--ghost" id="set-import">Import</button>
-        <button class="btn btn--danger" id="set-reset">Reset all progress</button>
+        <button class="btn" id="set-export">Export</button>
+        <button class="btn" id="set-import">Import</button>
+        <button class="btn btn--danger" id="set-reset">Reset progress</button>
+        <button class="btn" id="set-onboard">Replay intro</button>
       </div>
       <input type="file" id="import-file" accept="application/json" hidden>
-    </div>
+    </section>
 
-    <div class="card">
-      <p class="row__title">Replay onboarding</p>
-      <div class="settings__actions">
-        <button class="btn btn--ghost" id="set-onboard">Show the 6 gears intro</button>
-      </div>
-    </div>
-
-    <div class="u-pad-bottom"></div>
+    <div class="u-tail"></div>
   </div>
 </section>
 
@@ -294,7 +372,7 @@
   <h2 class="dialog__title" id="confirm-title">Are you sure?</h2>
   <p class="dialog__body" id="confirm-body"></p>
   <div class="dialog__actions">
-    <button class="btn btn--ghost" id="confirm-cancel">Cancel</button>
+    <button class="btn" id="confirm-cancel">Cancel</button>
     <button class="btn btn--danger" id="confirm-ok">Confirm</button>
   </div>
 </dialog>
