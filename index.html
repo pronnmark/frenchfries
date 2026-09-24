@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#0b0d12">
+<meta name="description" content="French Fries — learn French verbs in 6 gears with chat-bubble drills, native audio and FSRS spaced repetition.">
+<title>French Fries · 6-Gear Verb Engine</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍟</text></svg>">
+</head>
+<body>
+
+<!-- ============================= ONBOARDING ============================= -->
+<section class="screen onboarding" id="screen-onboarding" hidden>
+  <div class="ob-wrap">
+    <div class="ob-logo">🍟</div>
+    <h1>Welcome to the<br><span class="grad">6-Gear Verb Engine</span></h1>
+    <p class="ob-lead">
+      To speak fluid French, you do not need 21 tenses.<br>
+      You only need <b>6 gears</b>. Every verb here is broken down by how it
+      actually functions in a conversation.
+    </p>
+    <ol class="ob-gears" id="ob-gears"></ol>
+    <div class="ob-how">
+      <h3>The loop</h3>
+      <p><b>Read the chat → think of the word → tap to check → swipe to grade.</b>
+      No typing. No multiple choice. 50 reps in 3 minutes while you wait for the bus.</p>
+    </div>
+    <button class="btn primary big" id="ob-start">Start the engine</button>
+  </div>
+</section>
+
+<!-- ================================ HOME ================================ -->
+<section class="screen" id="screen-home" hidden>
+  <header class="topbar">
+    <div class="brand"><span class="fry">🍟</span> French Fries</div>
+    <button class="icon-btn" id="home-settings" title="Settings" aria-label="Settings">⚙</button>
+  </header>
+
+  <div class="scroll">
+    <div class="today card">
+      <div class="today-head">
+        <div>
+          <div class="today-label">Today</div>
+          <div class="today-due" id="home-due">0</div>
+          <div class="today-sub" id="home-due-sub">cards ready</div>
+        </div>
+        <div class="streak" id="home-streak" title="Day streak">🔥 0</div>
+      </div>
+      <div class="bar"><div class="bar-fill" id="home-bar"></div></div>
+      <div class="today-foot">
+        <span id="home-newcount">0 new</span>
+        <span id="home-totalcount">0 in rotation</span>
+      </div>
+    </div>
+
+    <div class="mode-grid">
+      <button class="mode card" data-mode="chat">
+        <div class="mode-icon">💬</div>
+        <div class="mode-title">Chat Drill</div>
+        <div class="mode-sub">Real text-message context. The core loop.</div>
+        <div class="mode-count" id="count-chat">—</div>
+      </button>
+      <button class="mode card" data-mode="flash">
+        <div class="mode-icon">🃏</div>
+        <div class="mode-title">Flashcards</div>
+        <div class="mode-sub">Straight conjugation reps, swipe-graded.</div>
+        <div class="mode-count" id="count-flash">—</div>
+      </button>
+      <button class="mode card" data-mode="mixed">
+        <div class="mode-icon">⚡</div>
+        <div class="mode-title">Mixed Review</div>
+        <div class="mode-sub">Everything the algorithm says is due now.</div>
+        <div class="mode-count" id="count-mixed">—</div>
+      </button>
+      <button class="mode card" data-mode="gears">
+        <div class="mode-icon">⚙</div>
+        <div class="mode-title">The 6 Gears</div>
+        <div class="mode-sub">What each gear means, and when to use it.</div>
+        <div class="mode-count">6</div>
+      </button>
+    </div>
+
+    <h2 class="sec-title">Your garage</h2>
+    <p class="sec-sub">Tap a verb for its 6-gear dashboard. Toggle the switch to put it in rotation.</p>
+    <div class="verb-list" id="verb-list"></div>
+
+    <h2 class="sec-title">Progress</h2>
+    <div class="stats-grid" id="stats-grid"></div>
+    <div class="gear-mastery" id="gear-mastery"></div>
+    <div class="pad"></div>
+  </div>
+</section>
+
+<!-- ================================ GEARS =============================== -->
+<section class="screen" id="screen-gears" hidden>
+  <header class="topbar">
+    <button class="icon-btn" data-back>‹</button>
+    <div class="brand">The 6 Gears</div>
+    <span class="spacer"></span>
+  </header>
+  <div class="scroll" id="gears-body"></div>
+</section>
+
+<!-- =============================== DASHBOARD ============================ -->
+<section class="screen" id="screen-verb" hidden>
+  <header class="topbar">
+    <button class="icon-btn" data-back>‹</button>
+    <div class="brand" id="verb-title">Verb</div>
+    <button class="icon-btn" id="verb-speak" title="Hear the infinitive">🔊</button>
+  </header>
+  <div class="scroll" id="verb-body"></div>
+</section>
+
+<!-- ================================ DRILL =============================== -->
+<section class="screen drill" id="screen-drill" hidden>
+  <header class="topbar">
+    <button class="icon-btn" data-back>‹</button>
+    <div class="drill-progress">
+      <div class="dp-bar"><div class="dp-fill" id="drill-bar"></div></div>
+      <div class="dp-text" id="drill-count">0 / 0</div>
+    </div>
+    <button class="icon-btn" id="drill-audio" title="Toggle audio">🔊</button>
+  </header>
+
+  <div class="drill-body" id="drill-body">
+    <!-- chat card -->
+    <div class="thread" id="thread" hidden>
+      <div class="thread-head" id="thread-head"></div>
+      <div class="bubble in" id="bubble-in">
+        <span id="bubble-in-text"></span>
+        <div class="bubble-en" id="bubble-in-en"></div>
+      </div>
+      <div class="bubble out" id="bubble-out">
+        <span id="reply-pre"></span><span class="blank" id="reply-blank">________</span><span id="reply-post"></span>
+      </div>
+      <div class="vibe-tag" id="vibe-tag"></div>
+      <div class="reveal-en" id="reveal-en" hidden></div>
+    </div>
+
+    <!-- flashcard -->
+    <div class="flash" id="flash" hidden>
+      <div class="flash-gear" id="flash-gear"></div>
+      <div class="flash-inf" id="flash-inf"></div>
+      <div class="flash-person" id="flash-person"></div>
+      <div class="flash-answer" id="flash-answer" hidden>
+        <div class="fa-fr" id="flash-fr"></div>
+        <div class="fa-en" id="flash-en"></div>
+        <div class="fa-phrase" id="flash-phrase"></div>
+      </div>
+      <div class="flash-hint" id="flash-hint">tap to reveal</div>
+    </div>
+  </div>
+
+  <div class="tap-layer" id="tap-layer"></div>
+
+  <div class="grade-zone" id="grade-zone" hidden>
+    <button class="grade again" id="grade-again">
+      <span class="g-dot">🔴</span>
+      <span class="g-label">Wrong / too slow</span>
+      <span class="g-when" id="when-again">3 min</span>
+    </button>
+    <button class="grade good" id="grade-good">
+      <span class="g-dot">🟢</span>
+      <span class="g-label">Knew it instantly</span>
+      <span class="g-when" id="when-good">2 days</span>
+    </button>
+  </div>
+
+  <div class="swipe-hint" id="swipe-hint" hidden>← swipe left · swipe right →</div>
+
+  <div class="done-card" id="drill-done" hidden>
+    <div class="done-icon">✓</div>
+    <h2>Session done</h2>
+    <p id="done-summary"></p>
+    <button class="btn primary" id="done-again">Another round</button>
+    <button class="btn ghost" data-back>Back home</button>
+  </div>
+</section>
+
+<!-- =============================== SETTINGS ============================= -->
+<section class="screen" id="screen-settings" hidden>
+  <header class="topbar">
+    <button class="icon-btn" data-back>‹</button>
+    <div class="brand">Settings</div>
+    <span class="spacer"></span>
+  </header>
+  <div class="scroll">
+    <div class="card set-row">
+      <div><div class="set-title">Auto-play audio on reveal</div>
+      <div class="set-sub">Ties the written form to the phonological loop.</div></div>
+      <label class="switch"><input type="checkbox" id="set-audio"><span></span></label>
+    </div>
+    <div class="card set-row">
+      <div><div class="set-title">Show English translation</div>
+      <div class="set-sub">Turn off for pure immersion.</div></div>
+      <label class="switch"><input type="checkbox" id="set-english"><span></span></label>
+    </div>
+    <div class="card set-row">
+      <div><div class="set-title">Speech rate</div>
+      <div class="set-sub">Slower is better while you are still decoding.</div></div>
+      <input type="range" id="set-rate" min="0.5" max="1.2" step="0.05">
+    </div>
+    <div class="card set-row">
+      <div><div class="set-title">New cards per session</div>
+      <div class="set-sub">How many unseen items get introduced.</div></div>
+      <input type="number" id="set-new" min="0" max="40" step="1">
+    </div>
+    <div class="card set-row">
+      <div><div class="set-title">Session length</div>
+      <div class="set-sub">Cards per round.</div></div>
+      <input type="number" id="set-len" min="5" max="200" step="5">
+    </div>
+    <div class="card set-row">
+      <div><div class="set-title">French voice</div>
+      <div class="set-sub" id="voice-sub">Uses your device's native French voice.</div></div>
+      <select id="set-voice"></select>
+    </div>
+    <div class="card">
+      <div class="set-title">Data</div>
+      <div class="set-sub">Everything is stored locally in this browser.</div>
+      <div class="set-actions">
+        <button class="btn ghost" id="set-export">Export progress</button>
+        <button class="btn ghost" id="set-import">Import</button>
+        <button class="btn danger" id="set-reset">Reset all progress</button>
+      </div>
+      <input type="file" id="import-file" accept="application/json" hidden>
+    </div>
+    <div class="card">
+      <div class="set-title">Replay onboarding</div>
+      <div class="set-actions"><button class="btn ghost" id="set-onboard">Show the 6 gears intro</button></div>
+    </div>
+    <div class="pad"></div>
+  </div>
+</section>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="js/data.js"></script>
+<script src="js/fsrs.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
