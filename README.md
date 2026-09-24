@@ -39,8 +39,10 @@ No typing. No multiple choice. 50 reps while you wait for the bus.
 ## Modes
 
 - **💬 Chat Drill** — the core loop, one thread per verb per gear (90 threads shipped).
-- **🃏 Flashcards** — straight conjugation reps (`aller · The Alternate Universe · we` → *nous irions*),
-  same swipe grading, same scheduler.
+- **🃏 Flashcards** — **English in, French out**: the front shows the English conjugation
+  (*"we used to have"*), you say the French, tap, and the answer is *nous avions*. The prompt is
+  generated per gear so the "Done Deal" and the "Background" can never collide (*"I had"* vs
+  *"I used to have"*). Same swipe grading, same scheduler.
 - **⚡ Mixed Review** — everything the algorithm says is due right now.
 - **⚙ The 6 Gears** — what each gear means, with an *avoir* example you can tap to hear.
 - **Verb dashboard** — the full 6-gear template for any verb, every form tappable for audio,
@@ -71,12 +73,15 @@ The grade buttons show you the actual next interval before you commit.
 
 ```bash
 open index.html            # that is genuinely it
-# or, for a proper origin (recommended, enables installing as a PWA):
+# or, for a proper origin (recommended — enables the service worker and PWA install):
 python3 -m http.server 8080
 ```
 
 Then visit <http://localhost:8080>. On iOS/Android use **Share → Add to Home Screen** for a
-full-screen app. Deploy anywhere static (Pages, Netlify, an S3 bucket, a Coolify static app).
+full-screen app; the service worker precaches the shell so it launches with no network. Deploy
+anywhere static (Pages, Netlify, an S3 bucket, a Coolify static app).
+
+> Changing a file in `ASSETS`? Bump `CACHE` in `sw.js`, or returning users keep the old shell.
 
 ### Keyboard (desktop)
 
@@ -97,6 +102,29 @@ rate in Settings.
 
 Everything lives in `localStorage` under `frenchfries.v1` — progress never leaves the device.
 Settings has **Export / Import** (plain JSON) to move a profile between browsers, and a reset.
+
+## Design system
+
+The UI is built on a token layer, not ad-hoc CSS — see **[DESIGN.md](DESIGN.md)**.
+
+> Tokens decide, components express, screens compose.
+
+`tokens.css` is the only file allowed to contain a raw value; `components.css` holds the kit
+(`.card`, `.btn`, `.pill`, `.switch`, `.meter`, `.bubble`, `.grade`, `.dialog`…); `screens.css`
+only composes them. JS hooks are `data-*` attributes, never component classes, so styling can be
+renamed without breaking behaviour. Each gear owns one hue, declared once — set
+`data-gear="imparfait"` on any element and its subtree can use `var(--gear)`.
+
+## Checks
+
+```bash
+node tools/check-data.mjs   # 15 verbs · 540 forms · 90 threads · 630 cards
+```
+
+It verifies far more than shape: every chat thread's blank must genuinely be a form of the gear
+it claims, the passé composé must use the verb's declared auxiliary, subjunctive forms must carry
+`que/qu'`, spacing around each blank must produce a clean sentence, and no two gears may generate
+the same English prompt.
 
 ## Adding a verb
 
@@ -120,14 +148,22 @@ from it — nothing else to touch.
 }
 ```
 
+Then run `node tools/check-data.mjs` — it will tell you if anything in the new entry is off.
+
 ## Layout
 
 ```
 index.html                 all screens (onboarding, home, gears, dashboard, drill, settings)
-css/style.css              dark iMessage-flavoured UI
+css/tokens.css             design tokens — the only file with raw values
+css/base.css               reset, document defaults, focus ring, utilities
+css/components.css         the component kit
+css/screens.css            per-screen composition
 js/data.js                 the 6 gears + every verb + card generation
 js/fsrs.js                 FSRS-4.5 scheduler
 js/app.js                  screens, the loop, swipe/tap input, audio, storage
+sw.js                      offline app shell (bump CACHE when assets change)
+tools/check-data.mjs       content integrity gate
+DESIGN.md                  the design system
 ```
 
 MIT.

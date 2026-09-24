@@ -1,0 +1,126 @@
+/* ==================================================================
+   BASE — reset, document defaults, accessibility primitives.
+   No component styling lives here.
+================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Several toggled elements are display:flex/grid, which would otherwise
+   beat the user-agent [hidden] rule and leave stale UI on screen. */
+[hidden] {
+  display: none !important;
+}
+
+html {
+  height: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg-sunken);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--size-base);
+  line-height: var(--leading-normal);
+  overscroll-behavior: none;
+}
+
+h1, h2, h3, h4, p, ol, ul, figure {
+  margin: 0;
+}
+
+ol, ul {
+  padding: 0;
+  list-style: none;
+}
+
+h1, h2, h3, h4 {
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  font-weight: var(--weight-bold);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  margin: 0;
+  cursor: pointer;
+}
+
+b, strong {
+  font-weight: var(--weight-semibold);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--brand) 45%, transparent);
+}
+
+/* One visible focus treatment everywhere, keyboard only. */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: var(--radius-sm);
+}
+
+/* French strings carry lang="fr" so speech synthesis and screen readers
+   pronounce them correctly rather than reading French as English. */
+[lang='fr'] {
+  font-synthesis: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ------------------------------------------------------ utilities --
+   Deliberately few. If a utility is reached for three times, it should
+   become a component instead. */
+.u-muted { color: var(--text-muted); }
+.u-subtle { color: var(--text-subtle); }
+.u-center { text-align: center; }
+.u-pad-bottom { height: var(--space-10); }
+
+.eyebrow {
+  font-size: var(--size-sm);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.text-gradient {
+  background: linear-gradient(95deg, var(--amber-300), var(--red-500) 55%, var(--gear-imparfait));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

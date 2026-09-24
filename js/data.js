@@ -15,7 +15,6 @@ const GEARS = [
     fr: 'Le Présent',
     en: 'Present',
     icon: '▶',
-    color: '#34d399',
     instruction: 'Use this for what is happening right now, or everyday facts.',
     when: 'Happening now · everyday truth'
   },
@@ -27,7 +26,6 @@ const GEARS = [
     fr: 'Le Passé Composé',
     en: 'Completed Past',
     icon: '⏪',
-    color: '#f472b6',
     instruction: 'Use this for a sudden, finished event in the past. It is a dot on the timeline.',
     when: 'One finished event · a dot'
   },
@@ -39,7 +37,6 @@ const GEARS = [
     fr: "L'Imparfait",
     en: 'Ongoing Past',
     icon: '〜',
-    color: '#a78bfa',
     instruction: 'Use this to set the scene, describe past habits, or talk about ongoing background states.',
     when: 'Scene · habit · used to'
   },
@@ -51,7 +48,6 @@ const GEARS = [
     fr: 'Le Futur Simple',
     en: 'Simple Future',
     icon: '⏩',
-    color: '#38bdf8',
     instruction: 'Use this to declare what will definitely happen later.',
     when: 'Will definitely happen'
   },
@@ -63,7 +59,6 @@ const GEARS = [
     fr: 'Le Conditionnel',
     en: 'Conditional',
     icon: '◇',
-    color: '#fbbf24',
     instruction: 'Use this for "would" scenarios, polite requests, and alternate realities.',
     when: 'Would · politely · if'
   },
@@ -75,7 +70,6 @@ const GEARS = [
     fr: 'Le Subjonctif',
     en: 'Subjunctive',
     icon: '♡',
-    color: '#fb7185',
     instruction: 'Use this after trigger phrases like "il faut que" (I must) or "je veux que" (I want that) to express emotion, doubt, or necessity.',
     when: 'Emotion · doubt · necessity'
   }

@@ -1,6 +1,11 @@
 /* ------------------------------------------------------------------
-   app.js — screens, the chat-bubble loop, flashcards, audio, storage
-   DOM is built with a small element builder (no innerHTML anywhere).
+   app.js — screens, the chat-bubble loop, flashcards, audio, storage.
+
+   Conventions:
+   - DOM is built with h() — no innerHTML anywhere.
+   - Styling comes from the design system (css/*). This file sets
+     classes and data-gear; it never sets a colour or a pixel value.
+   - JS hooks are data-* attributes, not component class names.
 ------------------------------------------------------------------ */
 (() => {
   const D = window.DATA;
@@ -10,12 +15,14 @@
   const $ = id => document.getElementById(id);
   const txt = s => document.createTextNode(String(s));
 
-  /** h('div', {class, text, style:{}, attrs:{}}, [children]) */
+  /** h('div', {class, text, lang, gear, attrs, on}, [children]) */
   function h(tag, opts, children) {
     const n = document.createElement(tag);
     const o = opts || {};
     if (o.class) n.className = o.class;
     if (o.text != null) n.textContent = String(o.text);
+    if (o.lang) n.lang = o.lang;
+    if (o.gear) n.dataset.gear = o.gear;
     if (o.style) for (const k of Object.keys(o.style)) n.style.setProperty(k, o.style[k]);
     if (o.attrs) for (const k of Object.keys(o.attrs)) n.setAttribute(k, o.attrs[k]);
     if (o.on) for (const k of Object.keys(o.on)) n.addEventListener(k, o.on[k]);
@@ -24,11 +31,15 @@
   }
   function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
 
-  /** The on/off pill used in the verb list and dashboard. */
-  function switchEl(checked, onChange) {
-    const input = h('input', { attrs: { type: 'checkbox' }, on: { change: onChange } });
+  /** Design-system switch: <span.switch><input><span.switch__track></span> */
+  function switchEl(checked, label, onChange) {
+    const input = h('input', {
+      class: 'switch__input',
+      attrs: { type: 'checkbox', 'aria-label': label },
+      on: { change: onChange }
+    });
     input.checked = !!checked;
-    return h('label', { class: 'switch' }, [input, h('span')]);
+    return h('span', { class: 'switch' }, [input, h('span', { class: 'switch__track' })]);
   }
 
   /* ------------------------------ storage ------------------------- */
@@ -100,7 +111,7 @@
     }
   };
 
-  // "je suis allé(e)" → "je suis allé" for the voice engine
+  // "je suis allé(e)" → "je suis allé"; "il est venu / elle est venue" → "…, …"
   const speakable = s => s.replace(/\(e\)s|\(e\)|\(s\)/g, '').replace(/\s*\/\s*/g, ', ');
 
   /* ------------------------------ router -------------------------- */
@@ -111,7 +122,7 @@
     const cur = current();
     if (push !== false && cur && cur !== name) back.push(cur);
     for (const s of SCREENS) $(`screen-${s}`).hidden = s !== name;
-    const sc = document.querySelector(`#screen-${name} .scroll`);
+    const sc = document.querySelector(`#screen-${name} .screen__scroll`);
     if (sc) sc.scrollTo(0, 0);
   }
   function current() { return SCREENS.find(s => !$(`screen-${s}`).hidden); }
@@ -125,9 +136,31 @@
   let toastTimer = null;
   function toast(msg) {
     const t = $('toast');
-    t.textContent = msg; t.hidden = false;
+    t.textContent = msg;
+    t.hidden = false;
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => { t.hidden = true; }, 1800);
+  }
+  const announce = msg => { $('live-region').textContent = msg; };
+
+  /** Design-system confirm — replaces window.confirm. */
+  function confirmAction(title, body, okLabel) {
+    return new Promise(resolve => {
+      const dlg = $('confirm-dialog');
+      $('confirm-title').textContent = title;
+      $('confirm-body').textContent = body;
+      $('confirm-ok').textContent = okLabel;
+      const done = ok => {
+        dlg.close();
+        $('confirm-ok').onclick = null;
+        $('confirm-cancel').onclick = null;
+        resolve(ok);
+      };
+      $('confirm-ok').onclick = () => done(true);
+      $('confirm-cancel').onclick = () => done(false);
+      dlg.onclose = () => resolve(false);
+      dlg.showModal();
+    });
   }
 
   /* ---------------------------- card pools ------------------------ */
@@ -186,7 +219,10 @@
   }
 
   function statTile(value, label) {
-    return h('div', { class: 'stat' }, [h('b', { text: value }), h('span', { text: label })]);
+    return h('div', { class: 'stat' }, [
+      h('b', { class: 'stat__value', text: value }),
+      h('span', { class: 'stat__label', text: label })
+    ]);
   }
 
   function renderHome() {
@@ -214,44 +250,55 @@
     for (const v of VERBS) {
       const on = S.active.includes(v.id);
       const pct = Math.round(verbProgress(v.id) * 100);
-      const tap = h('button', { class: 'verb-tap', on: { click: () => openVerb(v.id) } }, [
-        h('div', { class: 'verb-inf' }, [txt(v.inf), h('span', { class: 'tag', text: v.family })]),
-        h('div', { class: 'verb-en', text: v.en }),
-        h('div', { class: 'verb-meter' }, [h('i', { style: { width: `${pct}%` } })])
+      const main = h('button', {
+        class: 'list-row__main',
+        attrs: { 'aria-label': `${v.inf} — ${v.en}, ${pct}% learned. Open dashboard.` },
+        on: { click: () => openVerb(v.id) }
+      }, [
+        h('span', { class: 'verb-list__inf', lang: 'fr' }, [txt(v.inf), h('span', { class: 'tag', text: v.family })]),
+        h('span', { class: 'verb-list__en', text: v.en }),
+        h('span', { class: 'meter meter--inline' }, [
+          h('span', { class: 'meter__fill meter__fill--brand', style: { width: `${pct}%` } })
+        ])
       ]);
-      const sw = switchEl(on, e => {
+
+      const sw = switchEl(on, `Keep ${v.inf} in rotation`, e => {
         if (e.target.checked) S.active.push(v.id);
         else S.active = S.active.filter(x => x !== v.id);
         if (!S.active.length) {
-          S.active = [v.id]; e.target.checked = true;
+          S.active = [v.id];
+          e.target.checked = true;
           toast('Keep at least one verb in rotation');
         }
-        save(); renderHome();
+        save();
+        renderHome();
       });
-      list.appendChild(h('div', { class: `verb-row${on ? '' : ' off'}` }, [tap, sw]));
+      list.appendChild(h('div', { class: `list-row${on ? '' : ' list-row--off'}` }, [main, sw]));
     }
 
     // ---- stats
     let mature = 0;
     for (const c of pool) if (strengthOf(c.id) > 0.8) mature++;
     const acc = S.log.reviews ? Math.round(S.log.good / S.log.reviews * 100) : 0;
-    const grid = $('stats-grid');
+    const grid = $('stat-grid');
     clear(grid);
     grid.appendChild(statTile(S.log.reviews, 'reps'));
     grid.appendChild(statTile(`${acc}%`, 'instant'));
     grid.appendChild(statTile(mature, 'mastered'));
 
     // ---- per-gear mastery
-    const gm = $('gear-mastery');
-    clear(gm);
+    const mastery = $('mastery');
+    clear(mastery);
     for (const g of GEARS) {
       let sum = 0, n = 0;
       for (const c of pool) if (c.gearId === g.id) { sum += strengthOf(c.id); n++; }
       const pct = n ? Math.round(sum / n * 100) : 0;
-      gm.appendChild(h('div', { class: 'gm-row' }, [
-        h('div', { class: 'gm-name', text: `${g.icon} ${g.nick}` }),
-        h('div', { class: 'gm-bar' }, [h('i', { style: { width: `${pct}%`, background: g.color } })]),
-        h('div', { class: 'gm-pct', text: `${pct}%` })
+      mastery.appendChild(h('div', { class: 'mastery__row', gear: g.id }, [
+        h('span', { class: 'mastery__name', text: `${g.icon} ${g.nick}` }),
+        h('span', { class: 'meter mastery__meter' }, [
+          h('span', { class: 'meter__fill meter__fill--gear', style: { width: `${pct}%` } })
+        ]),
+        h('span', { class: 'mastery__pct', text: `${pct}%` })
       ]));
     }
   }
@@ -261,39 +308,41 @@
     const ol = $('ob-gears');
     clear(ol);
     for (const g of GEARS) {
-      ol.appendChild(h('li', { style: { '--g': g.color } }, [
-        h('div', { class: 'n', text: g.n }),
-        h('div', null, [
-          h('div', { class: 't', text: g.nick }),
-          h('div', { class: 's', text: `${g.en} · ${g.fr} — ${g.when}` })
+      ol.appendChild(h('li', { class: 'gear-list__item', gear: g.id }, [
+        h('span', { class: 'gear-list__n', text: g.n }),
+        h('span', null, [
+          h('span', { class: 'gear-list__name', text: g.nick }),
+          h('span', { class: 'gear-list__meta', text: `${g.en} · ${g.fr} — ${g.when}` })
         ])
       ]));
     }
   }
 
   /* --------------------------- gears screen ----------------------- */
+  function exampleEl(phrase) {
+    return h('button', { class: 'example', on: { click: () => Speech.say(phrase[0], true) } }, [
+      h('span', { class: 'example__fr', lang: 'fr', text: phrase[0] }),
+      h('span', { class: 'example__en', text: phrase[1] })
+    ]);
+  }
+
   function renderGears() {
     const body = $('gears-body');
     clear(body);
     body.appendChild(h('p', {
-      class: 'sec-sub',
-      text: 'You do not need 21 tenses. You need 6 gears — Time, Shape (aspect) and Mood, sorted by what they actually do in a conversation. Examples use avoir.'
+      class: 'section__sub',
+      text: 'You do not need 21 tenses. You need 6 gears — Time, Shape (aspect) and Mood, sorted by what they actually do in a conversation. Examples use avoir; tap one to hear it.'
     }));
     const ref = VERB_BY_ID.avoir;
     for (const g of GEARS) {
-      const gg = ref.gears[g.id];
-      const ex = h('div', { class: 'gear-ex', on: { click: () => Speech.say(gg.phrase[0], true) } }, [
-        h('b', { text: gg.phrase[0] }),
-        h('i', { text: gg.phrase[1] })
-      ]);
-      body.appendChild(h('div', { class: 'card gear-card', style: { '--g': g.color } }, [
-        h('div', { class: 'gear-fr', text: `Gear ${g.n} · ${g.fr}` }),
-        h('h3', { text: `${g.icon} ${g.nick}` }),
-        h('p', { class: 'gear-instr', text: g.instruction }),
-        ex
+      body.appendChild(h('section', { class: 'card card--gear', gear: g.id }, [
+        h('p', { class: 'gear-doc__fr', text: `Gear ${g.n} · ${g.fr}` }),
+        h('h2', { class: 'gear-doc__title', text: `${g.icon} ${g.nick}` }),
+        h('p', { class: 'gear-doc__instruction', text: g.instruction }),
+        exampleEl(ref.gears[g.id].phrase)
       ]));
     }
-    body.appendChild(h('div', { class: 'pad' }));
+    body.appendChild(h('div', { class: 'u-pad-bottom' }));
   }
 
   /* --------------------------- verb dashboard --------------------- */
@@ -306,26 +355,26 @@
     const body = $('verb-body');
     clear(body);
 
-    body.appendChild(h('div', { class: 'verb-hero' }, [
-      h('div', { class: 'inf', text: v.inf }),
-      h('div', { class: 'en', text: v.en }),
-      h('div', {
-        class: 'meta',
+    body.appendChild(h('header', { class: 'verb-hero' }, [
+      h('h2', { class: 'verb-hero__inf', lang: 'fr', text: v.inf }),
+      h('p', { class: 'verb-hero__en', text: v.en }),
+      h('p', {
+        class: 'verb-hero__meta',
         text: `${v.family} · passé composé with ${v.aux} · ${Math.round(verbProgress(vid) * 100)}% learned`
       })
     ]));
 
-    const sw = switchEl(S.active.includes(vid), e => {
+    const sw = switchEl(S.active.includes(vid), `Keep ${v.inf} in rotation`, e => {
       if (e.target.checked) S.active.push(vid);
       else S.active = S.active.filter(x => x !== vid);
       if (!S.active.length) { S.active = [vid]; e.target.checked = true; }
       save();
       toast(e.target.checked ? `${v.inf} added to rotation` : `${v.inf} paused`);
     });
-    body.appendChild(h('div', { class: 'card set-row' }, [
-      h('div', null, [
-        h('div', { class: 'set-title', text: 'In rotation' }),
-        h('div', { class: 'set-sub', text: 'Include this verb in your daily reviews.' })
+    body.appendChild(h('div', { class: 'card row' }, [
+      h('div', { class: 'row__body' }, [
+        h('p', { class: 'row__title', text: 'In rotation' }),
+        h('p', { class: 'row__sub', text: 'Include this verb in your daily reviews.' })
       ]),
       sw
     ]));
@@ -335,53 +384,63 @@
       const conj = h('div', { class: 'conj' });
       gg.forms.forEach((f, i) => {
         conj.appendChild(h('button', {
-          class: 'conj-row',
+          class: 'conj__row',
+          attrs: { 'aria-label': `${f} — ${D.glossFor(v, g.id, i)}. Hear it.` },
           on: { click: () => Speech.say(speakable(f), true) }
         }, [
-          h('span', { class: 'conj-fr', text: f }),
-          h('span', { class: 'conj-en', text: D.glossFor(v, g.id, i) }),
-          h('span', { class: 'say', text: '🔊' })
+          h('span', { class: 'conj__fr', lang: 'fr', text: f }),
+          h('span', { class: 'conj__en', text: D.glossFor(v, g.id, i) }),
+          h('span', { class: 'conj__speaker', text: '🔊', attrs: { 'aria-hidden': 'true' } })
         ]));
       });
 
-      body.appendChild(h('div', { class: 'card dash-gear', style: { '--g': g.color } }, [
-        h('div', { class: 'dg-head' }, [
-          h('span', { class: 'dg-n', text: g.n }),
-          h('span', { class: 'dg-title', text: `${g.icon} ${g.nick}` }),
-          h('span', { class: 'dg-fr', text: g.fr })
+      const example = exampleEl(gg.phrase);
+      example.classList.add('gear-block__example');
+
+      body.appendChild(h('section', { class: 'card card--gear', gear: g.id }, [
+        h('div', { class: 'gear-block__head' }, [
+          h('span', { class: 'gear-block__n', text: g.n }),
+          h('h2', { class: 'gear-block__title', text: `${g.icon} ${g.nick}` }),
+          h('span', { class: 'gear-block__fr', text: g.fr })
         ]),
-        h('div', { class: 'dg-instr', text: g.instruction }),
+        h('p', { class: 'gear-block__instruction', text: g.instruction }),
         conj,
-        h('div', { class: 'dg-phrase', on: { click: () => Speech.say(gg.phrase[0], true) } }, [
-          h('b', { text: gg.phrase[0] }),
-          h('i', { text: gg.phrase[1] })
-        ]),
+        example,
         h('button', {
-          class: 'btn ghost drill-this',
+          class: 'btn btn--ghost gear-block__drill',
           text: 'Drill this gear 💬',
-          on: { click: () => startDrill('custom', D.allCardsForVerb(vid).filter(x => x.gearId === g.id)) }
+          on: {
+            click: () => startDrill({
+              label: `${v.inf} · ${g.nick}`,
+              build: () => D.allCardsForVerb(vid).filter(x => x.gearId === g.id)
+            })
+          }
         })
       ]));
     }
-    body.appendChild(h('div', { class: 'pad' }));
+    body.appendChild(h('div', { class: 'u-pad-bottom' }));
     show('verb');
   }
 
   /* ------------------------------- drill -------------------------- */
-  const Drill = { queue: [], done: 0, planned: 0, revealed: false, card: null, again: 0, good: 0, mode: 'mixed' };
+  const Drill = { queue: [], done: 0, revealed: false, card: null, again: 0, good: 0, source: null };
 
-  function startDrill(mode, customCards) {
-    const cards = customCards || buildSession(mode);
+  /** source = { label, build() -> cards[] } */
+  function startDrill(source) {
+    const cards = source.build();
     if (!cards.length) { toast('Nothing due — add a verb or come back later'); return; }
-    Drill.mode = mode === 'custom' ? Drill.mode : mode;
+    Drill.source = source;
     Drill.queue = cards.slice();
-    Drill.planned = cards.length;
-    Drill.done = 0; Drill.again = 0; Drill.good = 0;
+    Drill.done = 0;
+    Drill.again = 0;
+    Drill.good = 0;
     $('drill-done').hidden = true;
-    $('drill-body').hidden = false;
+    $('drill-stage').hidden = false;
     show('drill');
     nextCard();
   }
+
+  const modeSource = mode => ({ label: mode, build: () => buildSession(mode) });
 
   function nextCard() {
     if (!Drill.queue.length) { finishDrill(); return; }
@@ -390,22 +449,23 @@
     renderCard(Drill.card);
     $('grade-zone').hidden = true;
     $('swipe-hint').hidden = true;
-    $('tap-layer').classList.remove('off');
-    const totalish = Drill.planned + Drill.again;
-    $('drill-bar').style.width = `${Math.round(Drill.done / Math.max(totalish, 1) * 100)}%`;
-    $('drill-count').textContent = `${Drill.done} / ${totalish}`;
+    $('tap-layer').classList.remove('drill__tap--off');
+    // honest denominator: everything still in hand, including this card
+    const total = Drill.done + Drill.queue.length + 1;
+    $('drill-bar').style.width = `${Math.round(Drill.done / total * 100)}%`;
+    $('drill-count').textContent = `${Drill.done} / ${total}`;
   }
 
   function renderCard(card) {
     const v = VERB_BY_ID[card.verbId];
     const g = GEAR_BY_ID[card.gearId];
-    const body = $('drill-body');
-    body.style.transform = '';
-    body.classList.remove('swipe-tint-left', 'swipe-tint-right');
+    const stage = $('drill-stage');
+    stage.style.transform = '';
+    stage.classList.remove('drill__stage--left', 'drill__stage--right');
 
     if (card.kind === 'chat') {
       $('thread').hidden = false;
-      $('flash').hidden = true;
+      $('flashcard').hidden = true;
       $('thread-head').textContent = `${v.inf} · ${g.icon} ${g.nick}`;
       $('bubble-in-text').textContent = card.incoming;
       $('bubble-in-en').textContent = card.incomingEn;
@@ -415,13 +475,15 @@
       const blank = $('reply-blank');
       blank.textContent = '________';
       blank.className = 'blank';
-      $('vibe-tag').textContent = `${g.icon} The Vibe: ${g.vibe}`;
+      const vibe = $('vibe-tag');
+      vibe.textContent = `${g.icon} The Vibe: ${g.vibe}`;
+      vibe.dataset.gear = g.id;
       $('reveal-en').textContent = card.replyEn;
       $('reveal-en').hidden = true;
     } else {
       $('thread').hidden = true;
-      $('flash').hidden = false;
-      $('flash').style.setProperty('--g', g.color);
+      $('flashcard').hidden = false;
+      $('flashcard').dataset.gear = g.id;
       $('flash-gear').textContent = `${g.icon} ${g.nick} · ${g.fr}`;
       $('flash-context').textContent = `${v.inf} · ${v.en}`;
       $('flash-prompt').textContent = `“${card.prompt}”`;
@@ -443,14 +505,16 @@
     if (card.kind === 'chat') {
       const blank = $('reply-blank');
       blank.textContent = card.answer;
-      blank.className = 'blank filled';
+      blank.className = 'blank blank--filled';
       $('reveal-en').hidden = !S.settings.english;
       Speech.say(speakable(card.sentence));
+      announce(`${card.answer}. ${card.sentence}`);
     } else {
       $('flash-ask').hidden = true;
       $('flash-answer').hidden = false;
       $('flash-hint').hidden = true;
       Speech.say(speakable(card.answer));
+      announce(card.answer);
     }
 
     const st = S.cards[card.id] || FSRS.newState();
@@ -458,7 +522,7 @@
     $('when-good').textContent = FSRS.preview(st, GRADE.GOOD);
     $('grade-zone').hidden = false;
     $('swipe-hint').hidden = false;
-    $('tap-layer').classList.add('off');
+    $('tap-layer').classList.add('drill__tap--off');
   }
 
   function grade(g) {
@@ -469,9 +533,11 @@
 
     S.log.reviews++;
     if (g === GRADE.GOOD) {
-      S.log.good++; Drill.good++;
+      S.log.good++;
+      Drill.good++;
     } else {
-      S.log.again++; Drill.again++;
+      S.log.again++;
+      Drill.again++;
       // "show me that exact bubble again in 3 minutes" — within a session
       // that means a handful of cards later.
       const at = Math.min(Drill.queue.length, 4 + Math.floor(Math.random() * 3));
@@ -484,7 +550,7 @@
   }
 
   function finishDrill() {
-    $('drill-body').hidden = true;
+    $('drill-stage').hidden = true;
     $('grade-zone').hidden = true;
     $('swipe-hint').hidden = true;
     $('drill-bar').style.width = '100%';
@@ -503,43 +569,44 @@
   $('grade-good').addEventListener('click', () => grade(GRADE.GOOD));
 
   (function swipe() {
-    const body = $('drill-body');
+    const stage = $('drill-stage');
     let x0 = null, dx = 0;
     const start = e => {
       if (!Drill.revealed) return;
       x0 = e.touches ? e.touches[0].clientX : e.clientX;
       dx = 0;
-      body.classList.add('dragging');
+      stage.classList.add('drill__stage--dragging');
     };
     const move = e => {
       if (x0 === null) return;
       const x = e.touches ? e.touches[0].clientX : e.clientX;
       dx = x - x0;
-      body.style.transform = `translateX(${dx}px) rotate(${dx / 40}deg)`;
-      body.classList.toggle('swipe-tint-left', dx < -30);
-      body.classList.toggle('swipe-tint-right', dx > 30);
+      stage.style.transform = `translateX(${dx}px) rotate(${dx / 40}deg)`;
+      stage.classList.toggle('drill__stage--left', dx < -30);
+      stage.classList.toggle('drill__stage--right', dx > 30);
     };
     const end = () => {
       if (x0 === null) return;
-      body.classList.remove('dragging');
+      stage.classList.remove('drill__stage--dragging');
       const d = dx;
       x0 = null;
-      body.style.transform = '';
-      body.classList.remove('swipe-tint-left', 'swipe-tint-right');
+      stage.style.transform = '';
+      stage.classList.remove('drill__stage--left', 'drill__stage--right');
       if (d < -70) grade(GRADE.AGAIN);
       else if (d > 70) grade(GRADE.GOOD);
     };
-    body.addEventListener('touchstart', start, { passive: true });
-    body.addEventListener('touchmove', move, { passive: true });
-    body.addEventListener('touchend', end);
-    body.addEventListener('mousedown', start);
+    stage.addEventListener('touchstart', start, { passive: true });
+    stage.addEventListener('touchmove', move, { passive: true });
+    stage.addEventListener('touchend', end);
+    stage.addEventListener('mousedown', start);
     window.addEventListener('mousemove', move);
     window.addEventListener('mouseup', end);
   })();
 
   document.addEventListener('keydown', e => {
-    if (current() !== 'drill') return;
+    if (current() !== 'drill' || $('confirm-dialog').open) return;
     if (e.key === ' ' || e.key === 'Enter') {
+      if (e.target.closest('.grade__btn, .icon-btn, .btn')) return; // let buttons be buttons
       e.preventDefault();
       if (Drill.revealed) grade(GRADE.GOOD); else reveal();
     }
@@ -577,14 +644,16 @@
   $('set-audio').addEventListener('change', e => { S.settings.audio = e.target.checked; save(); syncAudioIcon(); });
   $('set-english').addEventListener('change', e => { S.settings.english = e.target.checked; save(); });
   $('set-rate').addEventListener('change', e => {
-    S.settings.rate = Number(e.target.value); save();
+    S.settings.rate = Number(e.target.value);
+    save();
     Speech.say('Bonjour, je suis prêt.', true);
   });
   $('set-new').addEventListener('change', e => { S.settings.newPerSession = Number(e.target.value) || 0; save(); });
   $('set-len').addEventListener('change', e => { S.settings.sessionLen = Math.max(5, Number(e.target.value) || 20); save(); });
   $('set-voice').addEventListener('change', e => {
     S.settings.voice = e.target.value;
-    Speech.choose(e.target.value); save();
+    Speech.choose(e.target.value);
+    save();
     Speech.say('Bonjour ! On y va.', true);
   });
   $('set-onboard').addEventListener('click', () => { renderOnboarding(); show('onboarding'); });
@@ -606,7 +675,9 @@
       try {
         const data = JSON.parse(r.result);
         S = { ...DEFAULTS, ...data, settings: { ...DEFAULTS.settings, ...(data.settings || {}) } };
-        save(); renderHome(); renderSettings();
+        save();
+        renderHome();
+        renderSettings();
         toast('Progress imported');
       } catch {
         toast('That file is not valid progress JSON');
@@ -614,11 +685,18 @@
     };
     r.readAsText(f);
   });
-  $('set-reset').addEventListener('click', () => {
-    if (!confirm('Erase all progress and start from zero?')) return;
+  $('set-reset').addEventListener('click', async () => {
+    const ok = await confirmAction(
+      'Reset all progress?',
+      'Every review, streak and schedule stored in this browser will be erased. This cannot be undone.',
+      'Erase everything'
+    );
+    if (!ok) return;
     localStorage.removeItem(KEY);
     S = structuredClone(DEFAULTS);
-    save(); renderHome(); renderSettings();
+    save();
+    renderHome();
+    renderSettings();
     toast('Progress reset');
   });
 
@@ -627,24 +705,32 @@
   $('home-settings').addEventListener('click', () => { renderSettings(); show('settings'); });
   $('verb-speak').addEventListener('click', () => Speech.say(VERB_BY_ID[openVerbId].inf, true));
 
-  function syncAudioIcon() { $('drill-audio').textContent = S.settings.audio ? '🔊' : '🔇'; }
+  function syncAudioIcon() {
+    const b = $('drill-audio');
+    b.textContent = S.settings.audio ? '🔊' : '🔇';
+    b.setAttribute('aria-label', S.settings.audio ? 'Mute audio' : 'Unmute audio');
+  }
   $('drill-audio').addEventListener('click', () => {
     S.settings.audio = !S.settings.audio;
-    save(); syncAudioIcon();
+    save();
+    syncAudioIcon();
     toast(S.settings.audio ? 'Audio on' : 'Audio muted');
   });
 
-  $('done-again').addEventListener('click', () => startDrill(Drill.mode));
+  $('done-again').addEventListener('click', () => startDrill(Drill.source));
   $('ob-start').addEventListener('click', () => {
-    S.onboarded = true; save();
-    renderHome(); show('home', false); back = [];
+    S.onboarded = true;
+    save();
+    renderHome();
+    show('home', false);
+    back = [];
   });
 
-  for (const m of document.querySelectorAll('.mode')) {
+  for (const m of document.querySelectorAll('[data-mode]')) {
     m.addEventListener('click', () => {
       const mode = m.dataset.mode;
       if (mode === 'gears') { renderGears(); show('gears'); return; }
-      startDrill(mode);
+      startDrill(modeSource(mode));
     });
   }
 
@@ -654,4 +740,11 @@
   renderHome();
   syncAudioIcon();
   show(S.onboarded ? 'home' : 'onboarding', false);
+
+  // Offline shell. Skipped on file:// where service workers are unavailable.
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => { /* offline is a bonus, not a requirement */ });
+    });
+  }
 })();
