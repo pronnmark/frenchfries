@@ -6,7 +6,7 @@
    Strategy: stale-while-revalidate for assets, network-first with a
    cached fallback for navigations.
 ------------------------------------------------------------------ */
-const CACHE = 'frenchfries-v6';
+const CACHE = 'frenchfries-v7';
 
 const ASSETS = [
   './',

@@ -94,14 +94,25 @@
   }
   function save() { localStorage.setItem(KEY, JSON.stringify(S)); }
 
-  const today = () => new Date().toISOString().slice(0, 10);
+  /** Local calendar day as YYYY-MM-DD — a streak follows your clock, not UTC. */
+  function dayKey(offsetDays) {
+    const d = new Date();
+    d.setDate(d.getDate() + (offsetDays || 0));
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+  const today = () => dayKey(0);
 
   function bumpStreak() {
     const t = today();
     if (S.streak.last === t) return;
-    const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    S.streak.count = S.streak.last === y ? S.streak.count + 1 : 1;
+    S.streak.count = S.streak.last === dayKey(-1) ? S.streak.count + 1 : 1;
     S.streak.last = t;
+  }
+
+  /** The streak as it stands now: one missed day and it is gone. */
+  function liveStreak() {
+    return S.streak.last === today() || S.streak.last === dayKey(-1) ? S.streak.count : 0;
   }
 
   /* ------------------------------- theme -------------------------- */
@@ -150,12 +161,16 @@
     say(text, force) {
       if (!window.speechSynthesis) return;
       if (!force && !S.settings.audio) return;
-      window.speechSynthesis.cancel();
+      const synth = window.speechSynthesis;
+      const busy = synth.speaking || synth.pending;
+      synth.cancel();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = Speech.pick ? Speech.pick.lang : 'fr-FR';
       if (Speech.pick) u.voice = Speech.pick;
       u.rate = S.settings.rate;
-      window.speechSynthesis.speak(u);
+      // Safari silently drops a speak() issued in the same tick as cancel().
+      if (busy) setTimeout(() => synth.speak(u), 60);
+      else synth.speak(u);
     }
   };
 
@@ -165,16 +180,33 @@
   /* ------------------------------ router -------------------------- */
   const SCREENS = ['onboarding', 'home', 'phrases', 'gears', 'verb', 'drill', 'settings'];
   let back = [];
+  let depth = 0; // history entries we pushed, so the phone's Back gesture walks screens
 
   function show(name, push) {
     const cur = current();
-    if (push !== false && cur && cur !== name) back.push(cur);
+    if (push !== false && cur && cur !== name) {
+      back.push(cur);
+      history.pushState({ ff: name }, '');
+      depth++;
+    }
     for (const s of SCREENS) $(`screen-${s}`).hidden = s !== name;
     const sc = document.querySelector(`#screen-${name} .screen__scroll`);
     if (sc) sc.scrollTo(0, 0);
   }
   function current() { return SCREENS.find(s => !$(`screen-${s}`).hidden); }
+  /** In-app back buttons go through history so it stays in step with the screen. */
   function goBack() {
+    if (depth > 0) history.back(); // popstate below does the work
+    else stepBack();
+  }
+
+  window.addEventListener('popstate', () => {
+    if (depth > 0) depth--;
+    for (const d of document.querySelectorAll('dialog[open]')) d.close();
+    stepBack();
+  });
+
+  function stepBack() {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     const prev = back.pop() || 'home';
     show(prev === 'drill' ? 'home' : prev, false);
@@ -316,8 +348,11 @@
     $('home-due').textContent = ready;
     $('home-due-sub').textContent =
       `${ready === 1 ? 'card' : 'cards'} ready · ${S.active.length} verbs in rotation`;
-    $('home-streak').textContent = `🔥 ${S.streak.count}-day streak`;
-    if ($('top-streak')) $('top-streak').textContent = S.streak.count;
+    const streak = liveStreak();
+    $('home-streak').textContent = streak
+      ? `🔥 ${streak}-day streak`
+      : '🔥 Start a streak';
+    if ($('top-streak')) $('top-streak').textContent = streak;
     if ($('top-due')) $('top-due').textContent = ready;
 
     let seen = 0;
@@ -946,6 +981,12 @@
 
   /* --------------------------- input: tap/swipe ------------------- */
   $('tap-layer').addEventListener('click', reveal);
+  // Once revealed, a tap on the card replays it (a swipe is not a tap).
+  $('drill-stage').addEventListener('click', () => {
+    if (!Drill.revealed || !Drill.card) return;
+    const c = Drill.card;
+    Speech.say(speakable(c.kind === 'chat' ? c.sentence : c.answer), true);
+  });
   $('grade-again').addEventListener('click', () => grade(GRADE.AGAIN));
   $('grade-good').addEventListener('click', () => grade(GRADE.GOOD));
 
@@ -1041,8 +1082,20 @@
     save();
     Speech.say('Bonjour, je suis prêt.', true);
   });
-  $('set-new').addEventListener('change', e => { S.settings.newPerSession = Number(e.target.value) || 0; save(); });
-  $('set-len').addEventListener('change', e => { S.settings.sessionLen = Math.max(5, Number(e.target.value) || 20); save(); });
+  const clampInt = (v, lo, hi, fallback) => {
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) ? Math.min(Math.max(n, lo), hi) : fallback;
+  };
+  $('set-new').addEventListener('change', e => {
+    S.settings.newPerSession = clampInt(e.target.value, 0, 40, DEFAULTS.settings.newPerSession);
+    e.target.value = S.settings.newPerSession;
+    save();
+  });
+  $('set-len').addEventListener('change', e => {
+    S.settings.sessionLen = clampInt(e.target.value, 5, 200, DEFAULTS.settings.sessionLen);
+    e.target.value = S.settings.sessionLen;
+    save();
+  });
   $('set-voice').addEventListener('change', e => {
     S.settings.voice = e.target.value;
     Speech.choose(e.target.value);
@@ -1067,11 +1120,20 @@
     r.onload = () => {
       try {
         const data = JSON.parse(r.result);
+        const looksRight = data && typeof data === 'object' && !Array.isArray(data) &&
+          data.cards && typeof data.cards === 'object' && Array.isArray(data.active);
+        if (!looksRight) throw new Error('not a profile');
         S = {
           ...DEFAULTS, ...data,
           settings: { ...DEFAULTS.settings, ...(data.settings || {}) },
-          phrases: Array.isArray(data.phrases) ? data.phrases : []
+          streak: { ...DEFAULTS.streak, ...(data.streak || {}) },
+          log: { ...DEFAULTS.log, ...(data.log || {}) },
+          active: data.active.filter(id => VERB_BY_ID[id]),
+          phrases: Array.isArray(data.phrases)
+            ? data.phrases.filter(p => p && p.id && p.fr && p.en)
+            : []
         };
+        if (!S.active.length) S.active = DEFAULTS.active.slice();
         save();
         applyTheme();
         renderHome();
@@ -1147,6 +1209,15 @@
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('sw.js').catch(() => { /* offline is a bonus, not a requirement */ });
+    });
+    // A new deploy's worker claims the page mid-session; reload once so the
+    // page is not running old JS against new HTML. Not on first install.
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloaded || current() === 'drill') return;
+      reloaded = true;
+      location.reload();
     });
   }
 })();
