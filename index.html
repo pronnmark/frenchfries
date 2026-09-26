@@ -63,24 +63,26 @@
 <section class="screen" id="screen-onboarding" aria-label="Welcome" hidden>
   <div class="screen__scroll">
     <div class="onboarding">
-      <p class="eyebrow">French Fries</p>
+      <div class="onboarding__hero-badge">
+        <span>🍟</span>
+        <span>French Fries · 6 Gears</span>
+      </div>
       <h1 class="onboarding__title">Six gears, not twenty-one tenses.</h1>
       <p class="onboarding__lead">
-        Every verb here is broken down by how it actually functions in a conversation —
-        not by a grammar table.
+        Learn French verbs the way they actually work in daily conversation.
       </p>
 
       <ol class="gear-list" id="ob-gears"></ol>
 
       <div class="onboarding__loop">
-        <h2 class="section__title">The loop</h2>
+        <h2 class="section__title">The Drill Loop</h2>
         <p>
-          Read the chat, think of the word, tap to check, swipe to grade.
-          No typing. No multiple choice. Fifty reps while you wait for the bus.
+          Read the chat, think of the French verb form, tap to reveal and hear native audio, then swipe to grade.
+          Zero friction. Fifty reps while waiting for the bus.
         </p>
       </div>
 
-      <button class="btn btn--primary btn--block btn--lg" id="ob-start">Start</button>
+      <button class="btn btn--primary btn--block btn--lg" id="ob-start">Start Learning</button>
     </div>
   </div>
 </section>
@@ -88,9 +90,18 @@
 <!-- ================================ HOME ================================ -->
 <section class="screen" id="screen-home" aria-label="Home" hidden>
   <header class="appbar">
-    <span class="appbar__slot"></span>
+    <div class="appbar__slot">
+      <span class="stat-pill stat-pill--streak" title="Daily streak">
+        <span class="stat-pill__icon">🔥</span>
+        <span id="top-streak">0</span>
+      </span>
+      <span class="stat-pill stat-pill--due" title="Cards due">
+        <span class="stat-pill__icon">⚡</span>
+        <span id="top-due">0</span>
+      </span>
+    </div>
     <h1 class="appbar__title">French Fries</h1>
-    <button class="icon-btn appbar__slot" id="home-settings" aria-label="Settings">
+    <button class="icon-btn" id="home-settings" aria-label="Settings">
       <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-settings"/></svg>
     </button>
   </header>
@@ -99,13 +110,13 @@
     <section class="today" aria-label="Today">
       <div class="today__head">
         <div>
-          <p class="eyebrow">Today</p>
+          <p class="eyebrow">Today's Target</p>
           <p class="today__count" id="home-due">0</p>
           <p class="today__sub" id="home-due-sub">cards ready</p>
         </div>
-        <p class="today__streak" id="home-streak">0-day streak</p>
+        <div class="today__streak-badge" id="home-streak">🔥 0-day streak</div>
       </div>
-      <div class="meter today__meter">
+      <div class="meter today__bar">
         <span class="meter__fill meter__fill--brand" id="home-bar"></span>
       </div>
     </section>

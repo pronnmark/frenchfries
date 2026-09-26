@@ -279,7 +279,9 @@
     $('home-due').textContent = ready;
     $('home-due-sub').textContent =
       `${ready === 1 ? 'card' : 'cards'} ready · ${S.active.length} verbs in rotation`;
-    $('home-streak').textContent = `${S.streak.count}-day streak`;
+    $('home-streak').textContent = `🔥 ${S.streak.count}-day streak`;
+    if ($('top-streak')) $('top-streak').textContent = S.streak.count;
+    if ($('top-due')) $('top-due').textContent = ready;
 
     let seen = 0;
     for (const c of pool) if (S.cards[c.id]) seen++;
