@@ -16,6 +16,8 @@ globalThis.window = {};
 // eslint-disable-next-line no-eval
 (0, eval)(src);
 const D = globalThis.window.DATA;
+(0, eval)(readFileSync(join(root, 'js/phrases.js'), 'utf8'));
+const PH = globalThis.window.PHRASES;
 
 const errors = [];
 const warns = [];
@@ -155,6 +157,26 @@ for (const v of D.VERBS) {
   }
 }
 
+/* ---- phrasebook ------------------------------------------------- */
+const catIds = new Set(PH.CATS.map(c => c.id));
+if (!catIds.has('mine')) fail('PHRASES', 'the "mine" category (user phrases) must exist');
+const phraseIds = new Set();
+const phraseFr = new Set();
+for (const p of PH.LIST) {
+  const W = `phrase ${p.id}`;
+  for (const k of ['id', 'cat', 'fr', 'en', 'reg']) if (!p[k]) fail(W, `missing "${k}"`);
+  if (phraseIds.has(p.id)) fail(W, 'duplicate id');
+  phraseIds.add(p.id);
+  if (p.id.startsWith('u:')) fail(W, 'built-in ids must not start with "u:" (reserved for user phrases)');
+  if (!catIds.has(p.cat)) fail(W, `unknown category "${p.cat}"`);
+  if (p.cat === 'mine') fail(W, '"mine" is for user phrases only');
+  if (!PH.REGISTERS[p.reg]) fail(W, `unknown register "${p.reg}"`);
+  const f = norm(p.fr);
+  if (phraseFr.has(f)) fail(W, `duplicate French "${p.fr}"`);
+  phraseFr.add(f);
+  if (/\s[?!]/.test(p.fr) === false && /[?!]$/.test(p.fr)) warn(W, 'French puts a space before ? and !');
+}
+
 /* ---- report ----------------------------------------------------- */
 const line = '─'.repeat(52);
 console.log(line);
@@ -163,6 +185,7 @@ console.log(`gears   ${D.GEARS.length}`);
 console.log(`forms   ${forms}`);
 console.log(`threads ${threads}`);
 console.log(`cards   ${cardIds.size}`);
+console.log(`phrases ${PH.LIST.length} in ${PH.CATS.length} categories`);
 console.log(line);
 
 for (const w of warns) console.log(`WARN  ${w}`);

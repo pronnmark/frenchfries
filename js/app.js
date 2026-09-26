@@ -10,6 +10,8 @@
 (() => {
   const D = window.DATA;
   const { GEARS, GEAR_BY_ID, VERBS, VERB_BY_ID } = D;
+  const P = window.PHRASES;
+  const CAT_BY_ID = Object.fromEntries(P.CATS.map(c => [c.id, c]));
   const GRADE = FSRS.GRADE;
 
   const $ = id => document.getElementById(id);
@@ -33,11 +35,13 @@
   const dot = () => h('span', { class: 'dot', attrs: { 'aria-hidden': 'true' } });
   const gearIndex = g => h('span', { class: 'gear-index', text: g.n, attrs: { 'aria-hidden': 'true' } });
 
-  /** Fills an existing .gear-label element with its dot + text. */
+  /** Fills an existing .gear-label element with its dot + text.
+      gear may be null (phrase cards), which falls back to the brand hue. */
   function setGearLabel(el, gear, text) {
-    el.dataset.gear = gear.id;
+    if (gear) el.dataset.gear = gear.id;
+    else delete el.dataset.gear;
     clear(el);
-    el.appendChild(dot());
+    if (gear) el.appendChild(dot());
     el.appendChild(h('span', { class: 'gear-label__text', text }));
   }
 
@@ -57,6 +61,7 @@
     onboarded: false,
     active: ['etre', 'avoir'],
     cards: {},
+    phrases: [],          // your own phrases: { id: 'u:…', cat, reg, fr, en, note }
     settings: {
       theme: 'light',
       audio: true,
@@ -80,7 +85,8 @@
         settings: { ...DEFAULTS.settings, ...(raw.settings || {}) },
         streak: { ...DEFAULTS.streak, ...(raw.streak || {}) },
         log: { ...DEFAULTS.log, ...(raw.log || {}) },
-        cards: raw.cards || {}
+        cards: raw.cards || {},
+        phrases: Array.isArray(raw.phrases) ? raw.phrases : []
       };
     } catch {
       return structuredClone(DEFAULTS);
@@ -157,7 +163,7 @@
   const speakable = s => s.replace(/\(e\)s|\(e\)|\(s\)/g, '').replace(/\s*\/\s*/g, ', ');
 
   /* ------------------------------ router -------------------------- */
-  const SCREENS = ['onboarding', 'home', 'gears', 'verb', 'drill', 'settings'];
+  const SCREENS = ['onboarding', 'home', 'phrases', 'gears', 'verb', 'drill', 'settings'];
   let back = [];
 
   function show(name, push) {
@@ -173,6 +179,7 @@
     const prev = back.pop() || 'home';
     show(prev === 'drill' ? 'home' : prev, false);
     if (current() === 'home') renderHome();
+    if (current() === 'phrases') renderPhrases();
   }
 
   let toastTimer = null;
@@ -205,15 +212,44 @@
     });
   }
 
+  /* ---------------------------- phrases --------------------------- */
+  // Yours first, so a phrase you just added is the next one introduced.
+  const allPhrases = () => [...S.phrases, ...P.LIST];
+  const isOwn = p => p.id.startsWith('u:');
+  const phraseCardId = id => `ph:${id}`;
+
+  function phraseCard(p) {
+    return {
+      id: phraseCardId(p.id),
+      kind: 'phrase',
+      phraseId: p.id,
+      cat: p.cat,
+      reg: p.reg,
+      answer: p.fr,    // French out
+      prompt: p.en,    // English in
+      note: p.note || ''
+    };
+  }
+
+  /** Lowercase, no accents, straight apostrophes — for search and dedupe. */
+  const fold = s => String(s || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[’‘]/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
+
   /* ---------------------------- card pools ------------------------ */
   function poolFor(mode) {
     const out = [];
-    for (const vid of S.active) {
-      for (const c of D.allCardsForVerb(vid)) {
-        if (mode === 'chat' && c.kind !== 'chat') continue;
-        if (mode === 'flash' && c.kind !== 'form') continue;
-        out.push(c);
+    if (mode !== 'phrase') {
+      for (const vid of S.active) {
+        for (const c of D.allCardsForVerb(vid)) {
+          if (mode === 'chat' && c.kind !== 'chat') continue;
+          if (mode === 'flash' && c.kind !== 'form') continue;
+          out.push(c);
+        }
       }
+    }
+    if (mode === 'phrase' || mode === 'mixed') {
+      for (const p of allPhrases()) out.push(phraseCard(p));
     }
     return out;
   }
@@ -233,10 +269,11 @@
     return d.due + Math.min(d.fresh, S.settings.newPerSession);
   };
 
-  function buildSession(mode) {
+  function buildSession(mode, keep) {
     const now = Date.now();
     const due = [], fresh = [];
     for (const c of poolFor(mode)) {
+      if (keep && !keep(c)) continue;
       const st = S.cards[c.id];
       if (!st) fresh.push(c);
       else if (st.due <= now) due.push(c);
@@ -287,6 +324,7 @@
     for (const c of pool) if (S.cards[c.id]) seen++;
     $('home-bar').style.width = `${Math.round(seen / Math.max(pool.length, 1) * 100)}%`;
 
+    setCount($('count-phrases'), readyCount('phrase'));
     setCount($('count-chat'), readyCount('chat'));
     setCount($('count-flash'), readyCount('flash'));
     setCount($('count-mixed'), ready);
@@ -461,7 +499,7 @@
           h('span', { class: 'conj__bullet', text: '⚬' }),
           h('div', { class: 'conj__main' }, [
             h('span', { class: 'conj__fr', lang: 'fr', text: f }),
-            i === 2 ? h('span', { class: 'conj__note', text: " (Note: 'on' is used for 'we' in spoken French 90% of the time)" }) : null
+            i === 2 ? h('span', { class: 'conj__note', text: '“on” = “we” in everyday speech' }) : null
           ].filter(Boolean)),
           h('span', { class: 'conj__en', text: D.glossFor(v, g.id, i) })
         ];
@@ -564,6 +602,196 @@
     show('verb');
   }
 
+  /* ----------------------------- phrasebook ----------------------- */
+  let phraseCat = 'all';
+
+  function visiblePhrases() {
+    const q = fold($('phrase-search').value);
+    return allPhrases().filter(p =>
+      (phraseCat === 'all' || p.cat === phraseCat) &&
+      (!q || fold(p.fr).includes(q) || fold(p.en).includes(q) || fold(p.note).includes(q)));
+  }
+
+  function renderPhraseCats() {
+    const box = $('phrase-cats');
+    clear(box);
+    const counts = {};
+    for (const p of allPhrases()) counts[p.cat] = (counts[p.cat] || 0) + 1;
+    const chip = (id, label) => h('button', {
+      class: 'chip',
+      text: label,
+      attrs: { type: 'button', 'aria-pressed': String(phraseCat === id) },
+      on: { click: () => { phraseCat = id; renderPhrases(); } }
+    });
+    box.appendChild(chip('all', 'All'));
+    for (const c of P.CATS) {
+      if (!counts[c.id] && c.id !== 'mine') continue;
+      box.appendChild(chip(c.id, `${c.icon} ${c.name}${counts[c.id] ? ` · ${counts[c.id]}` : ''}`));
+    }
+    const on = box.querySelector('[aria-pressed="true"]');
+    if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+
+  function phraseRow(p) {
+    const own = isOwn(p);
+    const learned = Math.round(strengthOf(phraseCardId(p.id)) * 100);
+    return h('div', { class: 'phrase' }, [
+      h('button', {
+        class: 'phrase__main',
+        attrs: { type: 'button', 'aria-label': `${p.fr} — ${p.en}. Hear it.` },
+        on: { click: () => Speech.say(speakable(p.fr), true) }
+      }, [
+        h('span', { class: 'phrase__fr', lang: 'fr', text: p.fr }),
+        h('span', { class: 'phrase__en', text: p.en }),
+        p.note ? h('span', { class: 'phrase__note', text: p.note }) : null
+      ]),
+      h('div', { class: 'phrase__side' }, [
+        h('span', { class: `tag tag--${p.reg || 'neutral'}`, text: P.REGISTERS[p.reg] || P.REGISTERS.neutral }),
+        learned ? h('span', { class: 'phrase__learned', text: `${learned}%` }) : null,
+        own ? h('button', {
+          class: 'icon-btn icon-btn--sm',
+          attrs: { type: 'button', 'aria-label': `Edit “${p.fr}”` },
+          on: { click: () => openPhraseForm(p) }
+        }, [svgUse('i-edit')]) : null
+      ])
+    ]);
+  }
+
+  function svgUse(id) {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    const use = document.createElementNS(ns, 'use');
+    use.setAttribute('href', `#${id}`);
+    svg.appendChild(use);
+    return svg;
+  }
+
+  function renderPhrases() {
+    renderPhraseCats();
+    const body = $('phrase-body');
+    clear(body);
+    const list = visiblePhrases();
+
+    if (!list.length) {
+      const searching = !!$('phrase-search').value.trim();
+      body.appendChild(h('div', { class: 'empty' }, [
+        h('p', { class: 'empty__title', text: searching ? 'No phrase matches that' : 'No phrases here yet' }),
+        h('p', { class: 'empty__sub', text: 'Heard something useful? Save it and it joins your practice.' }),
+        h('button', { class: 'btn btn--secondary', text: 'Add a phrase', on: { click: () => openPhraseForm(null) } })
+      ]));
+    } else if (phraseCat === 'all') {
+      for (const c of P.CATS) {
+        const inCat = list.filter(p => p.cat === c.id);
+        if (!inCat.length) continue;
+        body.appendChild(h('h2', { class: 'phrase-group', text: `${c.icon} ${c.name}` }));
+        const box = h('div', { class: 'phrase-list' });
+        for (const p of inCat) box.appendChild(phraseRow(p));
+        body.appendChild(box);
+      }
+    } else {
+      const box = h('div', { class: 'phrase-list' });
+      for (const p of list) box.appendChild(phraseRow(p));
+      body.appendChild(box);
+    }
+    body.appendChild(h('div', { class: 'u-tail' }));
+
+    const ids = new Set(list.map(p => p.id));
+    const ready = buildSession('phrase', c => ids.has(c.phraseId)).length;
+    const btn = $('phrase-drill');
+    btn.textContent = ready ? `Practice ${ready} ${ready === 1 ? 'phrase' : 'phrases'}` : 'All caught up ✓';
+    btn.disabled = !ready;
+  }
+
+  $('phrase-search').addEventListener('input', renderPhrases);
+  $('phrase-add').addEventListener('click', () => openPhraseForm(null));
+  $('phrase-drill').addEventListener('click', () => {
+    const ids = new Set(visiblePhrases().map(p => p.id));
+    const cat = CAT_BY_ID[phraseCat];
+    startDrill({
+      label: cat ? cat.name : 'Phrases',
+      build: () => buildSession('phrase', c => ids.has(c.phraseId))
+    });
+  });
+
+  /* add / edit form */
+  let editingId = null;
+
+  function openPhraseForm(p) {
+    editingId = p ? p.id : null;
+    $('phrase-dialog-title').textContent = p ? 'Edit phrase' : 'Add a phrase';
+
+    const cat = $('pf-cat');
+    clear(cat);
+    for (const c of P.CATS) {
+      const o = h('option', { text: `${c.icon} ${c.name}` });
+      o.value = c.id;
+      cat.appendChild(o);
+    }
+    const reg = $('pf-reg');
+    clear(reg);
+    for (const [id, label] of Object.entries(P.REGISTERS)) {
+      const o = h('option', { text: label });
+      o.value = id;
+      reg.appendChild(o);
+    }
+
+    $('pf-fr').value = p ? p.fr : '';
+    $('pf-en').value = p ? p.en : '';
+    $('pf-note').value = p ? (p.note || '') : '';
+    cat.value = p ? p.cat : (phraseCat !== 'all' ? phraseCat : 'mine');
+    reg.value = p ? (p.reg || 'neutral') : 'casual';
+    $('pf-delete').hidden = !p;
+    $('phrase-dialog').showModal();
+  }
+
+  $('phrase-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const rec = {
+      fr: $('pf-fr').value.trim(),
+      en: $('pf-en').value.trim(),
+      note: $('pf-note').value.trim(),
+      cat: $('pf-cat').value || 'mine',
+      reg: $('pf-reg').value || 'neutral'
+    };
+    if (!rec.fr || !rec.en) { toast('Add both the French and the English'); return; }
+    const dupe = allPhrases().find(x => x.id !== editingId && fold(x.fr) === fold(rec.fr));
+    if (dupe) { toast('That phrase is already in your phrasebook'); return; }
+
+    if (editingId) {
+      const i = S.phrases.findIndex(x => x.id === editingId);
+      if (i >= 0) S.phrases[i] = { ...S.phrases[i], ...rec };
+    } else {
+      S.phrases.unshift({ id: `u:${Date.now().toString(36)}`, ...rec });
+    }
+    save();
+    $('phrase-dialog').close();
+    renderPhrases();
+    toast(editingId ? 'Phrase updated' : 'Saved — it joins your practice');
+  });
+
+  $('pf-cancel').addEventListener('click', () => $('phrase-dialog').close());
+  $('pf-hear').addEventListener('click', () => {
+    const fr = $('pf-fr').value.trim();
+    if (fr) Speech.say(speakable(fr), true);
+  });
+  $('pf-delete').addEventListener('click', async () => {
+    const id = editingId;
+    $('phrase-dialog').close();
+    const ok = await confirmAction('Delete this phrase?', 'It and its practice history will be removed.', 'Delete');
+    if (!ok) return;
+    S.phrases = S.phrases.filter(x => x.id !== id);
+    delete S.cards[phraseCardId(id)];
+    save();
+    renderPhrases();
+    toast('Phrase deleted');
+  });
+  // Tapping the backdrop closes the sheet, as on every phone.
+  $('phrase-dialog').addEventListener('click', e => {
+    if (e.target === $('phrase-dialog')) $('phrase-dialog').close();
+  });
+
   /* ------------------------------- drill -------------------------- */
   const Drill = { queue: [], done: 0, revealed: false, card: null, again: 0, good: 0, source: null };
 
@@ -605,7 +833,20 @@
     stage.style.transform = '';
     stage.classList.remove('drill__stage--left', 'drill__stage--right');
 
-    if (card.kind === 'chat') {
+    if (card.kind === 'phrase') {
+      const cat = CAT_BY_ID[card.cat] || CAT_BY_ID.mine;
+      $('thread').hidden = true;
+      $('flashcard').hidden = false;
+      setGearLabel($('flash-gear'), null, `${cat.icon} ${cat.name}`);
+      $('flash-context').textContent = P.REGISTERS[card.reg] || '';
+      $('flash-prompt').textContent = `“${card.prompt}”`;
+      $('flash-fr').textContent = card.answer;
+      $('flash-en').textContent = card.note;
+      $('flash-phrase').textContent = '';
+      $('flash-ask').hidden = false;
+      $('flash-answer').hidden = true;
+      $('flash-hint').hidden = false;
+    } else if (card.kind === 'chat') {
       $('thread').hidden = false;
       $('flashcard').hidden = true;
       $('thread-head').textContent = `${v.inf} · ${g.nick}`;
@@ -669,6 +910,7 @@
     const card = Drill.card;
     const prev = S.cards[card.id] || FSRS.newState();
     S.cards[card.id] = FSRS.review(prev, g, Date.now());
+    if (navigator.vibrate) navigator.vibrate(g === GRADE.GOOD ? 8 : [12, 40, 12]);
 
     S.log.reviews++;
     if (g === GRADE.GOOD) {
@@ -709,17 +951,27 @@
 
   (function swipe() {
     const stage = $('drill-stage');
-    let x0 = null, dx = 0;
+    let x0 = null, y0 = 0, dx = 0, axis = null;
     const start = e => {
       if (!Drill.revealed) return;
-      x0 = e.touches ? e.touches[0].clientX : e.clientX;
+      const pt = e.touches ? e.touches[0] : e;
+      x0 = pt.clientX;
+      y0 = pt.clientY;
       dx = 0;
+      axis = null;
       stage.classList.add('drill__stage--dragging');
     };
     const move = e => {
       if (x0 === null) return;
-      const x = e.touches ? e.touches[0].clientX : e.clientX;
-      dx = x - x0;
+      const pt = e.touches ? e.touches[0] : e;
+      // Decide once per gesture: a mostly-vertical drag is a scroll, not a grade.
+      if (!axis) {
+        const ax = Math.abs(pt.clientX - x0), ay = Math.abs(pt.clientY - y0);
+        if (ax < 8 && ay < 8) return;
+        axis = ax > ay ? 'x' : 'y';
+      }
+      if (axis === 'y') return;
+      dx = pt.clientX - x0;
       stage.style.transform = `translateX(${dx}px) rotate(${dx / 40}deg)`;
       stage.classList.toggle('drill__stage--left', dx < -30);
       stage.classList.toggle('drill__stage--right', dx > 30);
@@ -727,7 +979,7 @@
     const end = () => {
       if (x0 === null) return;
       stage.classList.remove('drill__stage--dragging');
-      const d = dx;
+      const d = axis === 'x' ? dx : 0;
       x0 = null;
       stage.style.transform = '';
       stage.classList.remove('drill__stage--left', 'drill__stage--right');
@@ -815,7 +1067,11 @@
     r.onload = () => {
       try {
         const data = JSON.parse(r.result);
-        S = { ...DEFAULTS, ...data, settings: { ...DEFAULTS.settings, ...(data.settings || {}) } };
+        S = {
+          ...DEFAULTS, ...data,
+          settings: { ...DEFAULTS.settings, ...(data.settings || {}) },
+          phrases: Array.isArray(data.phrases) ? data.phrases : []
+        };
         save();
         applyTheme();
         renderHome();
@@ -874,6 +1130,7 @@
     m.addEventListener('click', () => {
       const mode = m.dataset.mode;
       if (mode === 'gears') { renderGears(); show('gears'); return; }
+      if (mode === 'phrases') { renderPhrases(); show('phrases'); return; }
       startDrill(modeSource(mode));
     });
   }

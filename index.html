@@ -2,7 +2,7 @@
 <html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#ffffff" id="meta-theme">
 <meta name="description" content="French Fries — learn French verbs in 6 gears with chat-bubble drills, native audio and FSRS spaced repetition.">
 <title>French Fries · 6-Gear Verb Engine</title>
@@ -51,6 +51,12 @@
       <path d="M4 9.5h3L11.5 6v12L7 14.5H4z"/>
       <path d="M15 9.5a3.5 3.5 0 0 1 0 5"/>
       <path d="M17.5 7a7 7 0 0 1 0 10"/>
+    </g>
+    <g id="i-plus" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <path d="M12 5v14M5 12h14"/>
+    </g>
+    <g id="i-edit" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 20h4L19 9l-4-4L4 16z"/>
     </g>
     <g id="i-sound-off" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
       <path d="M4 9.5h3L11.5 6v12L7 14.5H4z"/>
@@ -123,6 +129,14 @@
 
     <nav class="section" aria-label="Practice modes">
       <div class="list">
+        <button class="list__item list__item--feature" data-mode="phrases">
+          <span class="list__emoji" aria-hidden="true">🗣️</span>
+          <span class="list__body">
+            <span class="list__title">Phrasebook</span>
+            <span class="list__sub">“C’est combien ?” and everything locals say. Add your own.</span>
+          </span>
+          <span class="list__meta list__meta--active" id="count-phrases">—</span>
+        </button>
         <button class="list__item" data-mode="chat">
           <span class="list__body">
             <span class="list__title">Chat Drill</span>
@@ -171,6 +185,31 @@
     </section>
 
     <div class="u-tail"></div>
+  </div>
+</section>
+
+<!-- ============================== PHRASEBOOK ============================ -->
+<section class="screen" id="screen-phrases" aria-label="Phrasebook" hidden>
+  <header class="appbar">
+    <button class="icon-btn" data-back aria-label="Go back">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"/></svg>
+    </button>
+    <h1 class="appbar__title">Phrasebook</h1>
+    <button class="icon-btn icon-btn--brand" id="phrase-add" aria-label="Add a phrase">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-plus"/></svg>
+    </button>
+  </header>
+
+  <div class="phrase-tools">
+    <input class="field__control field__control--search" type="search" id="phrase-search"
+           placeholder="Search French or English" aria-label="Search phrases" autocomplete="off" enterkeyhint="search">
+    <div class="chips" id="phrase-cats" role="group" aria-label="Filter by category"></div>
+  </div>
+
+  <div class="screen__scroll" id="phrase-body"></div>
+
+  <div class="action-bar">
+    <button class="btn btn--primary btn--block" id="phrase-drill">Practice phrases</button>
   </div>
 </section>
 
@@ -329,7 +368,7 @@
           <label class="row__title" for="set-new">New cards per session</label>
           <p class="row__sub">How many unseen items get introduced.</p>
         </div>
-        <input class="field__control field__control--number" type="number" id="set-new" min="0" max="40" step="1">
+        <input class="field__control field__control--number" type="number" inputmode="numeric" id="set-new" min="0" max="40" step="1">
       </div>
 
       <div class="row">
@@ -337,7 +376,7 @@
           <label class="row__title" for="set-len">Session length</label>
           <p class="row__sub">Cards per round.</p>
         </div>
-        <input class="field__control field__control--number" type="number" id="set-len" min="5" max="200" step="5">
+        <input class="field__control field__control--number" type="number" inputmode="numeric" id="set-len" min="5" max="200" step="5">
       </div>
     </section>
 
@@ -389,9 +428,50 @@
   </div>
 </dialog>
 
+<dialog class="dialog dialog--sheet" id="phrase-dialog">
+  <form class="phrase-form" id="phrase-form" method="dialog">
+    <h2 class="dialog__title" id="phrase-dialog-title">Add a phrase</h2>
+
+    <label class="phrase-form__label" for="pf-fr">French</label>
+    <div class="phrase-form__fr">
+      <input class="field__control field__control--text" id="pf-fr" lang="fr" required maxlength="160"
+             autocomplete="off" autocapitalize="sentences" placeholder="C’est combien ?">
+      <button class="icon-btn" type="button" id="pf-hear" aria-label="Hear the French">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sound-on"/></svg>
+      </button>
+    </div>
+
+    <label class="phrase-form__label" for="pf-en">English</label>
+    <input class="field__control field__control--text" id="pf-en" required maxlength="160"
+           autocomplete="off" placeholder="How much is it?">
+
+    <label class="phrase-form__label" for="pf-note">Note <span class="u-subtle">(optional)</span></label>
+    <input class="field__control field__control--text" id="pf-note" maxlength="200"
+           autocomplete="off" placeholder="When or how to use it">
+
+    <div class="phrase-form__pair">
+      <div>
+        <label class="phrase-form__label" for="pf-cat">Category</label>
+        <select class="field__control field__control--text" id="pf-cat"></select>
+      </div>
+      <div>
+        <label class="phrase-form__label" for="pf-reg">Register</label>
+        <select class="field__control field__control--text" id="pf-reg"></select>
+      </div>
+    </div>
+
+    <div class="dialog__actions">
+      <button class="btn" type="button" id="pf-cancel">Cancel</button>
+      <button class="btn btn--primary" type="submit" id="pf-save">Save</button>
+    </div>
+    <button class="btn btn--block btn--ghost-danger" type="button" id="pf-delete" hidden>Delete phrase</button>
+  </form>
+</dialog>
+
 <p class="visually-hidden" id="live-region" role="status" aria-live="polite"></p>
 
 <script src="js/data.js"></script>
+<script src="js/phrases.js"></script>
 <script src="js/fsrs.js"></script>
 <script src="js/app.js"></script>
 </body>

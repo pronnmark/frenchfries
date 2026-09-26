@@ -124,6 +124,8 @@
 }
 
 .today__streak-badge {
+  flex: 0 0 auto;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -345,12 +347,14 @@
 
 .gear-block__head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2) var(--space-3);
 }
 
 .gear-block__title {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   font-size: var(--size-lead);
   font-weight: var(--weight-bold);
   letter-spacing: var(--tracking-tight);
@@ -381,8 +385,9 @@
 
 .conj__row {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--space-3);
+  gap: 2px var(--space-3);
   width: 100%;
   padding: var(--space-2) var(--space-3);
   border: 2px solid var(--line);
@@ -408,8 +413,7 @@
 }
 
 .conj__main {
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 auto; /* no min-width:0 — let the gloss wrap below instead of crushing the form */
 }
 
 .conj__fr {
@@ -419,15 +423,15 @@
 }
 
 .conj__note {
-  display: inline-block;
-  margin-left: var(--space-1);
+  display: block;
   font-size: var(--size-caption);
   font-style: normal;
   color: var(--text-subtle);
 }
 
 .conj__en {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  margin-left: auto;
   font-size: var(--size-small);
   font-weight: var(--weight-medium);
   color: var(--text-muted);
@@ -540,6 +544,7 @@
 /* ------------------------------------------------------- drill --- */
 .drill__stage {
   flex: 1;
+  touch-action: pan-y; /* horizontal drags belong to the swipe-to-grade gesture */
   z-index: var(--z-stage);
   display: flex;
   flex-direction: column;
@@ -773,6 +778,116 @@
 
 .done .btn { margin-bottom: var(--space-3); }
 
+/* --------------------------------------------------- phrasebook --- */
+.phrase-tools {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--gutter) var(--space-2);
+  border-bottom: 2px solid var(--line);
+}
+
+.phrase-group {
+  margin: var(--space-5) 0 var(--space-3);
+  font-size: var(--size-lead);
+  font-weight: var(--weight-bold);
+}
+
+.phrase-group:first-child { margin-top: var(--space-1); }
+
+.phrase-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.phrase {
+  display: flex;
+  align-items: stretch;
+  border: 2px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  box-shadow: 0 2px 0 var(--line);
+}
+
+.phrase__main {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.phrase__main:active { background: var(--bg-sunken); }
+
+.phrase__fr {
+  display: block;
+  font-size: var(--size-lead);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+}
+
+.phrase__en {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--size-small);
+  color: var(--text-muted);
+}
+
+.phrase__note {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--size-caption);
+  color: var(--text-subtle);
+}
+
+.phrase__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3) var(--space-3) 0;
+}
+
+.phrase__learned {
+  font-size: var(--size-caption);
+  font-weight: var(--weight-bold);
+  color: var(--success);
+  font-variant-numeric: tabular-nums;
+}
+
+.phrase-form {
+  padding: var(--space-6) var(--space-5) calc(var(--space-5) + var(--safe-bottom));
+}
+
+.phrase-form__label {
+  display: block;
+  margin: var(--space-4) 0 var(--space-1);
+  font-size: var(--size-small);
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+.phrase-form__fr {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.phrase-form__fr .icon-btn { flex: 0 0 auto; height: var(--control-height); width: var(--control-height); }
+
+.phrase-form__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
 /* ---------------------------------------------------- settings --- */
 .settings__group { margin-bottom: var(--space-6); }
 
@@ -781,4 +896,24 @@
   grid-template-columns: 1fr 1fr;
   gap: var(--space-3);
   margin-top: var(--space-4);
+}
+
+/* ------------------------------------------------------- phones --- */
+@media (max-width: 480px) {
+  .gear-block__fr {
+    flex-basis: 100%;
+    order: 3;
+    text-align: left;
+    padding-left: calc(28px + var(--space-3)); /* aligns under the title, past the gear index */
+  }
+}
+
+/* ------------------------------------------------ narrow phones --- */
+@media (max-width: 380px) {
+  :root { --gutter: var(--space-4); }
+  .stat-pill { padding: 4px 9px; }
+  .appbar { gap: var(--space-2); padding-inline: var(--space-3); }
+  .today__count { font-size: var(--size-display); }
+  .flashcard__prompt,
+  .flashcard__fr { font-size: var(--size-title); }
 }

@@ -240,7 +240,7 @@
 
 /* Gear identity */
 [data-gear='present'] { --gear: var(--gear-1); --gear-shade: var(--gear-1-shade); }
-[data-gear='passe_compose'] { --gear: var(--gear-2); --gear-shade: var(--gear-2-shade); }
+[data-gear='passe'] { --gear: var(--gear-2); --gear-shade: var(--gear-2-shade); }
 [data-gear='imparfait'] { --gear: var(--gear-3); --gear-shade: var(--gear-3-shade); }
 [data-gear='futur'] { --gear: var(--gear-4); --gear-shade: var(--gear-4-shade); }
 [data-gear='conditionnel'] { --gear: var(--gear-5); --gear-shade: var(--gear-5-shade); }

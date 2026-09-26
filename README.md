@@ -38,6 +38,11 @@ No typing. No multiple choice. 50 reps while you wait for the bus.
 
 ## Modes
 
+- **🗣️ Phrasebook** — the everyday phrases locals actually say (*C’est combien ?*, *Ça fait
+  combien ?*, *L’addition, s’il vous plaît*, *T’inquiète*…), grouped by situation and tagged
+  **Casual / Anyone / Polite**. Tap any phrase to hear it. **＋** adds your own: French, English,
+  an optional note, a category and a register. Yours are editable, searchable and join the same
+  FSRS practice (English in, French out). "Practice" drills whatever the current filter shows.
 - **💬 Chat Drill** — the core loop, one thread per verb per gear (90 threads shipped).
 - **🃏 Flashcards** — **English in, French out**: the front shows the English conjugation
   (*"we used to have"*), you say the French, tap, and the answer is *nous avions*. The prompt is
@@ -127,13 +132,26 @@ palette and nothing else changes. Theme is applied before first paint, so there 
 ## Checks
 
 ```bash
-node tools/check-data.mjs   # 15 verbs · 540 forms · 90 threads · 630 cards
+node tools/check-data.mjs   # 15 verbs · 540 forms · 90 threads · 630 cards · 61 phrases
 ```
 
 It verifies far more than shape: every chat thread's blank must genuinely be a form of the gear
 it claims, the passé composé must use the verb's declared auxiliary, subjunctive forms must carry
 `que/qu'`, spacing around each blank must produce a clean sentence, and no two gears may generate
 the same English prompt.
+
+## Adding a built-in phrase
+
+Your own phrases are added in the app and live in `localStorage` (they travel with Export /
+Import). To ship a phrase to everyone, append it to `PHRASE_LIST` in `js/phrases.js`:
+
+```js
+{ id: 'cest-combien', cat: 'shop', reg: 'casual', fr: 'C’est combien ?', en: 'How much is it?',
+  note: 'The one locals use everywhere.' }
+```
+
+`reg` is `casual`, `neutral` or `polite`; `cat` is one of `PHRASE_CATS`. Ids must be unique and
+never start with `u:` (reserved for user phrases). `node tools/check-data.mjs` checks all of it.
 
 ## Adding a verb
 
@@ -168,6 +186,7 @@ css/base.css               reset, document defaults, focus ring, utilities
 css/components.css         the component kit
 css/screens.css            per-screen composition
 js/data.js                 the 6 gears + every verb + card generation
+js/phrases.js              the built-in phrasebook
 js/fsrs.js                 FSRS-4.5 scheduler
 js/app.js                  screens, the loop, swipe/tap input, audio, storage
 sw.js                      offline app shell (bump CACHE when assets change)
