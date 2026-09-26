@@ -410,14 +410,31 @@
     const body = $('verb-body');
     clear(body);
 
-    body.appendChild(h('header', { class: 'verb-hero' }, [
-      h('h2', { class: 'verb-hero__inf', lang: 'fr', text: v.inf }),
-      h('p', { class: 'verb-hero__en', text: v.en }),
-      h('p', {
-        class: 'verb-hero__meta',
-        text: `${v.family} · passé composé with ${v.aux} · ${Math.round(verbProgress(vid) * 100)}% learned`
-      })
-    ]));
+    const enCapitalized = v.en.charAt(0).toUpperCase() + v.en.slice(1);
+    const infUpper = v.inf.toUpperCase();
+
+    const heroElements = [
+      h('h2', { class: 'verb-hero__inf', lang: 'fr', text: `${infUpper} (${enCapitalized})` })
+    ];
+
+    if (v.pp) {
+      heroElements.push(h('button', {
+        class: 'verb-pp-callout',
+        attrs: { 'aria-label': `The Past Participle (The key to the past tense): ${v.pp} (uses ${v.aux}). Tap to hear it.` },
+        on: { click: () => Speech.say(speakable(v.pp), true) }
+      }, [
+        h('span', { class: 'verb-pp-callout__label', text: 'The Past Participle (The key to the past tense): ' }),
+        h('strong', { class: 'verb-pp-callout__val', lang: 'fr', text: v.pp }),
+        h('span', { class: 'verb-pp-callout__aux', text: ` (uses ${v.aux})` })
+      ]));
+    }
+
+    heroElements.push(h('p', {
+      class: 'verb-hero__meta',
+      text: `${v.family} · ${Math.round(verbProgress(vid) * 100)}% learned`
+    }));
+
+    body.appendChild(h('header', { class: 'verb-hero' }, heroElements));
 
     const sw = switchEl(S.active.includes(vid), `Keep ${v.inf} in rotation`, e => {
       if (e.target.checked) S.active.push(vid);
@@ -438,23 +455,35 @@
       const gg = v.gears[g.id];
       const conj = h('div', { class: 'conj' });
       gg.forms.forEach((f, i) => {
+        const rowChildren = [
+          h('span', { class: 'conj__bullet', text: '⚬' }),
+          h('div', { class: 'conj__main' }, [
+            h('span', { class: 'conj__fr', lang: 'fr', text: f }),
+            i === 2 ? h('span', { class: 'conj__note', text: " (Note: 'on' is used for 'we' in spoken French 90% of the time)" }) : null
+          ].filter(Boolean)),
+          h('span', { class: 'conj__en', text: D.glossFor(v, g.id, i) })
+        ];
+
         conj.appendChild(h('button', {
           class: 'conj__row',
           attrs: { 'aria-label': `${f} — ${D.glossFor(v, g.id, i)}. Hear it.` },
           on: { click: () => Speech.say(speakable(f), true) }
-        }, [
-          h('span', { class: 'conj__fr', lang: 'fr', text: f }),
-          h('span', { class: 'conj__en', text: D.glossFor(v, g.id, i) })
-        ]));
+        }, rowChildren));
       });
+
+      let instruction = g.instruction;
+      if (g.id === 'passe') {
+        const auxName = v.aux === 'être' ? 'Être' : 'Avoir';
+        instruction = `Use for completed dots on the timeline (a finished event). Formula: Present of ${auxName} + "${v.pp}".`;
+      }
 
       body.appendChild(h('section', { class: 'gear-block', gear: g.id }, [
         h('div', { class: 'gear-block__head' }, [
           gearIndex(g),
-          h('h2', { class: 'gear-block__title', text: g.nick }),
+          h('h2', { class: 'gear-block__title', text: `${g.n}. ${g.nick}` }),
           h('span', { class: 'gear-block__fr', text: g.fr })
         ]),
-        h('p', { class: 'gear-block__instruction', text: g.instruction }),
+        h('p', { class: 'gear-block__instruction', text: instruction }),
         conj,
         exampleEl(gg.phrase),
         h('button', {
@@ -467,6 +496,66 @@
             })
           }
         })
+      ]));
+    }
+
+    /* Conversational Cheats Section */
+    if (v.cheats) {
+      const cheatList = h('div', { class: 'cheat-list' });
+      const infCap = v.inf.charAt(0).toUpperCase() + v.inf.slice(1);
+      const cheatItems = [
+        { hack: `The Future Hack: Aller + ${infCap}`, fr: v.cheats.future[0], en: v.cheats.future[1] },
+        { hack: `The Necessity Hack: Il faut + ${infCap}`, fr: v.cheats.necessity[0], en: v.cheats.necessity[1] },
+        { hack: `The Desire Hack: Vouloir + ${infCap}`, fr: v.cheats.desire[0], en: v.cheats.desire[1] }
+      ];
+
+      cheatItems.forEach(c => {
+        cheatList.appendChild(h('button', {
+          class: 'cheat-item',
+          attrs: { 'aria-label': `${c.hack}: ${c.fr} (${c.en}). Hear it.` },
+          on: { click: () => Speech.say(speakable(c.fr), true) }
+        }, [
+          h('span', { class: 'cheat-item__bullet', text: '⚬' }),
+          h('div', { class: 'cheat-item__body' }, [
+            h('div', { class: 'cheat-item__hack', text: c.hack }),
+            h('div', { class: 'cheat-item__fr', lang: 'fr', text: c.fr }),
+            h('div', { class: 'cheat-item__en', text: `(${c.en})` })
+          ])
+        ]));
+      });
+
+      body.appendChild(h('section', { class: 'verb-section' }, [
+        h('div', { class: 'verb-section__head' }, [
+          h('h2', { class: 'verb-section__title', text: '⚡ The Conversational Cheats' }),
+          h('p', { class: 'verb-section__sub', text: 'Do not conjugate!' })
+        ]),
+        cheatList
+      ]));
+    }
+
+    /* Muscle Memory Section */
+    if (v.muscleMemory && v.muscleMemory.length) {
+      const muscleList = h('div', { class: 'muscle-list' });
+      v.muscleMemory.forEach((m, idx) => {
+        muscleList.appendChild(h('button', {
+          class: 'muscle-item',
+          attrs: { 'aria-label': `${m[0]} — ${m[1]}. Hear it.` },
+          on: { click: () => Speech.say(speakable(m[0]), true) }
+        }, [
+          h('span', { class: 'muscle-item__num', text: `${idx + 1}.` }),
+          h('div', { class: 'muscle-item__body' }, [
+            h('span', { class: 'muscle-item__fr', lang: 'fr', text: m[0] }),
+            h('span', { class: 'muscle-item__en', text: ` (${m[1]})` })
+          ])
+        ]));
+      });
+
+      body.appendChild(h('section', { class: 'verb-section' }, [
+        h('div', { class: 'verb-section__head' }, [
+          h('h2', { class: 'verb-section__title', text: '🧠 Muscle Memory Sentences' }),
+          h('p', { class: 'verb-section__sub', text: '3 short, highly common phrases you can actually use today. Read out loud.' })
+        ]),
+        muscleList
       ]));
     }
     body.appendChild(h('div', { class: 'u-tail' }));

@@ -201,6 +201,39 @@
   color: var(--text-muted);
 }
 
+.verb-pp-callout {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-left: 3px solid var(--brand);
+  background: var(--wash-brand);
+  text-align: left;
+  font-size: var(--size-small);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.verb-pp-callout:active {
+  background: color-mix(in srgb, var(--brand) 16%, transparent);
+}
+
+.verb-pp-callout__label {
+  color: var(--text-muted);
+}
+
+.verb-pp-callout__val {
+  font-weight: var(--weight-bold);
+  color: var(--text);
+  font-size: var(--size-body);
+}
+
+.verb-pp-callout__aux {
+  color: var(--text-subtle);
+}
+
 .verb-hero__meta {
   margin-top: var(--space-3);
   font-size: var(--size-caption);
@@ -247,7 +280,7 @@
 .conj__row {
   display: flex;
   align-items: baseline;
-  gap: var(--space-4);
+  gap: var(--space-3);
   width: 100%;
   padding: var(--space-2) 0;
   border: 0;
@@ -258,10 +291,28 @@
 
 .conj__row:active { background: var(--bg-sunken); }
 
-.conj__fr {
+.conj__bullet {
+  color: var(--text-subtle);
+  font-size: var(--size-small);
+  flex: 0 0 14px;
+}
+
+.conj__main {
   flex: 1;
+  min-width: 0;
+}
+
+.conj__fr {
   font-weight: var(--weight-medium);
   font-style: italic;
+}
+
+.conj__note {
+  display: inline-block;
+  margin-left: var(--space-1);
+  font-size: var(--size-caption);
+  font-style: normal;
+  color: var(--text-subtle);
 }
 
 .conj__en {
@@ -272,6 +323,97 @@
 }
 
 .gear-block__drill { width: 100%; margin-top: var(--space-4); }
+
+/* ------------------------------------------- verb extra sections --- */
+.verb-section {
+  padding-bottom: var(--space-6);
+  margin-bottom: var(--space-6);
+  border-bottom: var(--hairline);
+}
+
+.verb-section__head {
+  margin-bottom: var(--space-4);
+}
+
+.verb-section__title {
+  font-size: var(--size-lead);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+}
+
+.verb-section__sub {
+  margin-top: 2px;
+  font-size: var(--size-small);
+  color: var(--text-muted);
+}
+
+.cheat-list, .muscle-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.cheat-item, .muscle-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3);
+  border: var(--hairline);
+  background: var(--bg-sunken);
+  border-radius: var(--radius-sm);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cheat-item:active, .muscle-item:active {
+  background: var(--bg-inset);
+}
+
+.cheat-item__bullet, .muscle-item__num {
+  color: var(--text-subtle);
+  font-size: var(--size-small);
+  font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.cheat-item__body, .muscle-item__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.cheat-item__hack {
+  font-size: var(--size-caption);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.cheat-item__fr {
+  font-size: var(--size-body);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+}
+
+.cheat-item__en {
+  margin-top: 2px;
+  font-size: var(--size-small);
+  color: var(--text-muted);
+}
+
+.muscle-item__fr {
+  font-size: var(--size-body);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+}
+
+.muscle-item__en {
+  font-size: var(--size-small);
+  color: var(--text-muted);
+}
 
 /* ------------------------------------------------------- drill --- */
 .drill__stage {

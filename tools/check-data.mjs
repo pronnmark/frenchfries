@@ -50,11 +50,29 @@ for (const v of D.VERBS) {
   if (ids.has(v.id)) fail(V, `duplicate verb id "${v.id}"`);
   ids.add(v.id);
 
-  for (const k of ['id', 'inf', 'en', 'aux', 'family', 'enPP', 'enInf']) {
+  for (const k of ['id', 'inf', 'en', 'aux', 'family', 'enPP', 'enInf', 'pp']) {
     if (!v[k]) fail(V, `missing "${k}"`);
   }
   if (!['avoir', 'être'].includes(v.aux)) fail(V, `aux must be avoir/être, got "${v.aux}"`);
   if (!Array.isArray(v.enPresent) || v.enPresent.length !== 6) fail(V, 'enPresent must have 6 entries');
+
+  /* cheats check */
+  if (v.cheats) {
+    for (const ck of ['future', 'necessity', 'desire']) {
+      if (!Array.isArray(v.cheats[ck]) || v.cheats[ck].length !== 2 || !v.cheats[ck][0] || !v.cheats[ck][1]) {
+        fail(V, `cheat "${ck}" must be [french, english]`);
+      }
+    }
+  }
+
+  /* muscle memory check */
+  if (Array.isArray(v.muscleMemory)) {
+    v.muscleMemory.forEach((m, mi) => {
+      if (!Array.isArray(m) || m.length !== 2 || !m[0] || !m[1]) {
+        fail(V, `muscleMemory item ${mi} must be [french, english]`);
+      }
+    });
+  }
 
   for (const gid of GEAR_IDS) {
     const W = `${V} · ${gid}`;
