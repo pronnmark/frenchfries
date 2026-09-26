@@ -99,7 +99,7 @@ b, strong {
 .u-muted { color: var(--text-muted); }
 .u-subtle { color: var(--text-subtle); }
 .u-center { text-align: center; }
-.u-tail { height: var(--space-10); }
+.u-tail { height: calc(var(--space-10) + var(--safe-bottom)); }
 
 .eyebrow {
   font-size: var(--size-caption);

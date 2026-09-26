@@ -646,6 +646,7 @@
     stage.addEventListener('touchstart', start, { passive: true });
     stage.addEventListener('touchmove', move, { passive: true });
     stage.addEventListener('touchend', end);
+    stage.addEventListener('touchcancel', end);
     stage.addEventListener('mousedown', start);
     window.addEventListener('mousemove', move);
     window.addEventListener('mouseup', end);

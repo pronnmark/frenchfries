@@ -6,7 +6,7 @@
    Strategy: stale-while-revalidate for assets, network-first with a
    cached fallback for navigations.
 ------------------------------------------------------------------ */
-const CACHE = 'frenchfries-v3';
+const CACHE = 'frenchfries-v4';
 
 const ASSETS = [
   './',
@@ -19,7 +19,9 @@ const ASSETS = [
   './js/fsrs.js',
   './js/app.js',
   './manifest.webmanifest',
-  './icon.svg'
+  './icon.svg',
+  './icon-180.png',
+  './icon-512.png'
 ];
 
 self.addEventListener('install', event => {
